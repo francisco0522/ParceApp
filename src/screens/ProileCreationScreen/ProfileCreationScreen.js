@@ -28,6 +28,9 @@ export default function RegistrationScreen({navigation}) {
   };
 
   const next = () => {
+    if (numero == 10) {
+      navigation.replace('ProfileScreen');
+    }
     setNumero(numero + 1);
   };
 

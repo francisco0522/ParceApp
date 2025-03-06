@@ -34,7 +34,7 @@ export default function SplashScreen({navigation}) {
     if (userStatus == null || userStatus == 'Logout') {
       navigation.replace('LoginScreen');
     } else {
-      navigation.replace('ProfileCreationScreen');
+      navigation.replace('HomeScreen');
     }
   };
 
