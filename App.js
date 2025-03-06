@@ -7,7 +7,9 @@ import {
   RegistrationScreen,
   SplashScreen,
   ProfileCreationScreen,
-} from './src/screens';
+  ProfileScreen,
+  HomeScreen,
+} from './src/screens/index.js';
 import {decode, encode} from 'base-64';
 import rootReducer from './src/app/rooReducer.js';
 import {Provider} from 'react-redux';
@@ -37,10 +39,12 @@ export default function App() {
             name="RegistrationScreen"
             component={RegistrationScreen}
           />
+          <Stack.Screen name="HomeScreen" component={HomeScreen} />
           <Stack.Screen
             name="ProfileCreationScreen"
             component={ProfileCreationScreen}
           />
+          <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </Provider>
