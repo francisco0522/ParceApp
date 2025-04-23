@@ -6,6 +6,8 @@ export const userSlice = createSlice({
     id: null,
     name: null,
     email: null,
+    birthDate: null,
+    phone: null,
   },
   reducers: {
     setId: (state, action) => {
@@ -20,8 +22,17 @@ export const userSlice = createSlice({
       console.log('Ejecutando setEmail con:', action.payload);
       state.email = action.payload;
     },
+    setBirthDate: (state, action) => {
+      console.log('Ejecutando setBirthDate con:', action.payload);
+      state.birthDate = action.payload;
+    },
+    setPhone: (state, action) => {
+      console.log('Ejecutando setPhone con:', action.payload);
+      state.phone = action.payload;
+    },
   },
 });
 
-export const {setId, setName, setEmail} = userSlice.actions;
+export const {setId, setName, setEmail, setBirthDate, setPhone} =
+  userSlice.actions;
 export default userSlice.reducer;

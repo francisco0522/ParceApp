@@ -2,13 +2,19 @@ import React from 'react';
 import {View, Text, Image, StyleSheet} from 'react-native';
 import {Card, Avatar, Button} from 'react-native-paper';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {useSelector, useDispatch} from 'react-redux';
 
 const ProfileScreen = ({navigation}) => {
+  const name = useSelector(state => state.user.name);
+  const birthDate = useSelector(state => state.user.birthDate);
+  const phone = useSelector(state => state.user.phone);
+  const email = useSelector(state => state.user.email);
+
   const user = {
-    name: 'Juan Pérez',
-    birthDate: '15 de Marzo de 1995',
-    email: 'juanperez@email.com',
-    phone: '+57 300 123 4567',
+    name: name,
+    birthDate: birthDate,
+    email: email,
+    phone: phone,
     profilePic: 'https://randomuser.me/api/portraits/men/1.jpg',
   };
 
@@ -21,12 +27,12 @@ const ProfileScreen = ({navigation}) => {
         Volver
       </Button>
       <View style={styles.cardContainer}>
+        <View style={styles.profileHeader}>
+          <Avatar.Image size={80} source={{uri: user.profilePic}} />
+          <Text style={styles.name}>{user.name}</Text>
+        </View>
         <Card style={styles.card}>
           <Card.Content>
-            <View style={styles.profileHeader}>
-              <Avatar.Image size={80} source={{uri: user.profilePic}} />
-              <Text style={styles.name}>{user.name}</Text>
-            </View>
             <Text style={styles.info}>🎂 {user.birthDate}</Text>
             <Text style={styles.info}>📧 {user.email}</Text>
             <Text style={styles.info}>📱 {user.phone}</Text>
@@ -49,7 +55,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#78a28c',
   },
   cardContainer: {
-    paddingTop: 100,
+    paddingTop: 10,
     alignItems: 'center',
     backgroundColor: '#78a28c',
   },
@@ -59,7 +65,6 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '90%',
-    padding: 20,
     borderRadius: 10,
   },
   profileHeader: {
@@ -73,7 +78,7 @@ const styles = StyleSheet.create({
   },
   info: {
     fontSize: 16,
-    marginTop: 5,
+    margin: 2,
   },
   buttonProfileCreation: {
     marginTop: 100,
