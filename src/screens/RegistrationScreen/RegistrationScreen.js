@@ -15,7 +15,13 @@ import {firebaseApp} from '../../firebase/config';
 import {getFirestore, collection, addDoc} from 'firebase/firestore';
 import {useDispatch} from 'react-redux';
 //SLICES
-import {setId, setName, setEmail} from '../../slices/userSlice';
+import {
+  setId,
+  setName,
+  setEmail,
+  setBirthDate,
+  setPhone,
+} from '../../slices/userSlice';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Logo from '../../../assets/logo.png';
 import {useNavigation} from '@react-navigation/native';
@@ -24,6 +30,9 @@ export default function RegistrationScreen({navigation}) {
   const [emailText, setEmailText] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [birthDate, setBirthDateText] = useState('');
+  const [phone, setPhoneNumber] = useState('');
+
   const dispatch = useDispatch();
 
   const onFooterLinkPress = () => {
@@ -54,14 +63,21 @@ export default function RegistrationScreen({navigation}) {
             emailText,
             fullName,
             password,
+            birthDate,
+            phone,
           };
 
           const docRef = await addDoc(userCollectionRef, userData);
           dispatch(setId(uid));
           dispatch(setName(fullName));
           dispatch(setEmail(emailText));
+          dispatch(setBirthDate(birthDate));
+          dispatch(setPhone(phone));
+
           await AsyncStorage.setItem('fullName', fullName);
           await AsyncStorage.setItem('email', emailText);
+          await AsyncStorage.setItem('birthDate', birthDate);
+          await AsyncStorage.setItem('phone', phone);
           await AsyncStorage.setItem('id', uid);
           await AsyncStorage.setItem('userStatus', 'Login');
           navigation.replace('ProfileCreationScreen');
@@ -119,6 +135,24 @@ export default function RegistrationScreen({navigation}) {
           placeholder="Confirmar Contraseña"
           onChangeText={text => setConfirmPassword(text)}
           value={confirmPassword}
+          underlineColorAndroid="transparent"
+          autoCapitalize="none"
+        />
+        <TextInput
+          style={styles.input}
+          placeholderTextColor="#aaaaaa"
+          placeholder="Fecha de nacimiento"
+          onChangeText={text => setBirthDateText(text)}
+          value={birthDate}
+          underlineColorAndroid="transparent"
+          autoCapitalize="none"
+        />
+        <TextInput
+          style={styles.input}
+          placeholderTextColor="#aaaaaa"
+          placeholder="Telefono"
+          onChangeText={text => setPhoneNumber(text)}
+          value={phone}
           underlineColorAndroid="transparent"
           autoCapitalize="none"
         />

@@ -4,7 +4,13 @@ import {Image, Text, Animated, View, Button, SafeAreaView} from 'react-native';
 import styles from './styles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useDispatch} from 'react-redux';
-import {setId, setName, setEmail} from '../../slices/userSlice';
+import {
+  setId,
+  setName,
+  setEmail,
+  setBirthDate,
+  setPhone,
+} from '../../slices/userSlice';
 
 export default function SplashScreen({navigation}) {
   const dispatch = useDispatch();
@@ -27,10 +33,16 @@ export default function SplashScreen({navigation}) {
     const id = await AsyncStorage.getItem('id');
     const fullName = await AsyncStorage.getItem('fullName');
     const email = await AsyncStorage.getItem('email');
+    const birthDate = await AsyncStorage.getItem('birthDate');
+    const phone = await AsyncStorage.getItem('phone');
+    console.log(birthDate, 'birthDate');
 
     dispatch(setId(id));
     dispatch(setName(fullName));
     dispatch(setEmail(email));
+    dispatch(setBirthDate(birthDate));
+    dispatch(setPhone(phone));
+    console.log(userStatus, 'userStatus');
     if (userStatus == null || userStatus == 'Logout') {
       navigation.replace('LoginScreen');
     } else {

@@ -2,12 +2,29 @@ import React from 'react';
 import {View, Text, StyleSheet} from 'react-native';
 import {Button} from 'react-native-paper';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const HomeScreen = ({navigation}) => {
+  async function close() {
+    try {
+      // Clear sensitive data from AsyncStorage
+      const keysToRemove = ['userStatus', 'id', 'fullName', 'email'];
+      await Promise.all(keysToRemove.map(key => AsyncStorage.removeItem(key)));
+
+      navigation.navigate('LoginScreen');
+    } catch (error) {
+      console.error('Error during logout:', error);
+
+      Alert.alert(
+        'Error',
+        'An error occurred during logout. Please try again.',
+      );
+    }
+  }
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.container}>
-        <Text style={styles.title}>Juan Pérez</Text>
+        <Text style={styles.title}>Tu próxima cita te espera</Text>
         <View style={styles.buttonContainer}>
           <Button
             mode="contained"
@@ -31,7 +48,7 @@ const HomeScreen = ({navigation}) => {
           <Button
             mode="contained"
             style={styles.button}
-            onPress={() => navigation.navigate('LoginScreen')}>
+            onPress={async () => close()}>
             Salir
           </Button>
         </View>
