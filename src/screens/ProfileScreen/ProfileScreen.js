@@ -1,6 +1,6 @@
 import React from 'react';
-import {View, Text, Image, StyleSheet} from 'react-native';
-import {Card, Avatar, Button} from 'react-native-paper';
+import {View, Text, Image, StyleSheet, TouchableOpacity} from 'react-native';
+import {Card, Avatar} from 'react-native-paper';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useSelector, useDispatch} from 'react-redux';
 
@@ -17,15 +17,14 @@ const ProfileScreen = ({navigation}) => {
     phone: phone,
     profilePic: 'https://randomuser.me/api/portraits/men/1.jpg',
   };
-
+  console.log(user);
   return (
     <SafeAreaView style={styles.container}>
-      <Button
-        mode="contained"
+      <TouchableOpacity
         style={styles.buttonReturn}
         onPress={() => navigation.navigate('HomeScreen')}>
-        Volver
-      </Button>
+        <Text style={styles.buttonText}>Volver</Text>
+      </TouchableOpacity>
       <View style={styles.cardContainer}>
         <View style={styles.profileHeader}>
           <Avatar.Image size={80} source={{uri: user.profilePic}} />
@@ -38,12 +37,12 @@ const ProfileScreen = ({navigation}) => {
             <Text style={styles.info}>📱 {user.phone}</Text>
           </Card.Content>
         </Card>
-        <Button
-          mode="contained"
+        <TouchableOpacity
           style={styles.buttonProfileCreation}
           onPress={() => navigation.navigate('ProfileCreationScreen')}>
+          <Text style={styles.buttonText}>Formulario</Text>
           Formulario
-        </Button>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -52,16 +51,23 @@ const ProfileScreen = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#78a28c',
+    backgroundColor: '#b39c8b',
   },
   cardContainer: {
     paddingTop: 10,
     alignItems: 'center',
-    backgroundColor: '#78a28c',
+    backgroundColor: '#b39c8b',
   },
   buttonReturn: {
     width: 100,
     marginLeft: 10,
+    marginTop: 50,
+    height: 50,
+    borderRadius: 20,
+    borderColor: 'white',
+    backgroundColor: '#3293a8',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   card: {
     width: '90%',
@@ -81,10 +87,16 @@ const styles = StyleSheet.create({
     margin: 2,
   },
   buttonProfileCreation: {
-    marginTop: 100,
-    width: 'auto',
-    marginLeft: 10,
+    marginTop: 50,
+    width: '60%',
+    height: 50,
+    borderRadius: 20,
+    borderColor: 'white',
+    backgroundColor: '#3293a8',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  buttonText: {color: 'white', fontSize: 15, fontWeight: 600},
 });
 
 export default ProfileScreen;

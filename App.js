@@ -9,6 +9,7 @@ import {
   ProfileCreationScreen,
   ProfileScreen,
   HomeScreen,
+  Footer,
 } from './src/screens/index.js';
 import {decode, encode} from 'base-64';
 import rootReducer from './src/app/rooReducer.js';
@@ -34,6 +35,7 @@ export default function App() {
             headerShown: false,
           }}>
           <Stack.Screen name="SplashScreen" component={SplashScreen} />
+          <Stack.Screen name="Footer" component={Footer} />
           <Stack.Screen name="LoginScreen" component={LoginScreen} />
           <Stack.Screen
             name="RegistrationScreen"
