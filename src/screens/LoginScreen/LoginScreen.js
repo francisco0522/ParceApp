@@ -21,7 +21,13 @@ import {
   getDoc,
   doc,
 } from 'firebase/firestore';
-import {setId, setName, setEmail} from '../../slices/userSlice';
+import {
+  setId,
+  setName,
+  setEmail,
+  setBirthDate,
+  setPhone,
+} from '../../slices/userSlice';
 import {useSelector, useDispatch} from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -56,11 +62,16 @@ export default function LoginScreen({navigation}) {
             const data = docSnap.data();
             dispatch(setName(data.fullName));
             dispatch(setEmail(data.emailText));
+            dispatch(setBirthDate(data.birthDate));
+            dispatch(setPhone(data.phone));
             dispatch(setId(data.id));
             await AsyncStorage.setItem('fullName', data.fullName);
-            //await AsyncStorage.setItem('email', data.email);
+            await AsyncStorage.setItem('email', data.emailText);
             await AsyncStorage.setItem('id', data.id);
+            await AsyncStorage.setItem('phone', data.phone);
+            await AsyncStorage.setItem('birthDate', data.birthDate);
             await AsyncStorage.setItem('userStatus', 'Login');
+            console.log('aqui');
             navigation.replace('HomeScreen');
           } else {
             // docSnap.data() will be undefined in this case

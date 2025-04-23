@@ -4,7 +4,7 @@ export default StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: '#78a28c',
+    backgroundColor: '#b39c8b',
     justifyContent: 'center',
   },
   containerTitle: {marginTop: 30, alignItems: 'center'},
@@ -39,7 +39,7 @@ export default StyleSheet.create({
     justifyContent: 'center',
   },
   buttonTitle: {
-    color: '#78a28c',
+    color: '#b39c8b',
     fontSize: 16,
     fontWeight: 'bold',
   },

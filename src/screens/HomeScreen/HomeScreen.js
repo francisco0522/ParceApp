@@ -1,79 +1,130 @@
-import React from 'react';
-import {View, Text, StyleSheet} from 'react-native';
-import {Button} from 'react-native-paper';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, {useState} from 'react';
+import {
+  TouchableOpacity,
+  Text,
+  SafeAreaView,
+  Image,
+  View,
+  Alert,
+} from 'react-native';
+import Footer from '../Footer/Footer';
+import styles from './styles';
+import {FlatList} from 'react-native-gesture-handler';
+
+const dates = [
+  {id: '0', day: 'Miercoles', date: '23', month: 'Abril', time: '7:00 PM'},
+  {id: '1', day: 'Viernes', date: '24', month: 'Abril', time: '7:00 PM'},
+  {id: '2', day: 'Sábado', date: '26', month: 'Abril', time: '7:00 PM'},
+];
 
 const HomeScreen = ({navigation}) => {
-  async function close() {
-    try {
-      // Clear sensitive data from AsyncStorage
-      const keysToRemove = ['userStatus', 'id', 'fullName', 'email'];
-      await Promise.all(keysToRemove.map(key => AsyncStorage.removeItem(key)));
-
-      navigation.navigate('LoginScreen');
-    } catch (error) {
-      console.error('Error during logout:', error);
-
-      Alert.alert(
-        'Error',
-        'An error occurred during logout. Please try again.',
-      );
+  const [selected, setSelected] = useState([]);
+  const toggleSelect = id => {
+    if (selected.includes(id)) {
+      setSelected(prev => prev.filter(item => item !== id));
+      console.log(selected);
+    } else {
+      setSelected(prev => [...prev, id]);
+      console.log(selected);
     }
-  }
+  };
+  const renderCard = ({item}) => {
+    const isSelected = selected.includes(item.id);
+    console.log(isSelected);
+    return (
+      <TouchableOpacity
+        style={isSelected ? styles.cardSelected : styles.card}
+        onPress={() => toggleSelect(item.id)}>
+        <View>
+          <Text
+            style={
+              isSelected ? styles.cardDateTextSelected : styles.cardDateText
+            }>
+            {item.day}, {item.date} de {item.month}
+          </Text>
+          <Text
+            style={
+              isSelected ? styles.cardTimeTextSelected : styles.cardTimeText
+            }>
+            {item.time}
+          </Text>
+        </View>
+        <View>
+          <Text
+            style={isSelected ? styles.cardCheckSelected : styles.cardCheck}>
+            ✔
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.container}>
-        <Text style={styles.title}>Tu próxima cita te espera</Text>
-        <View style={styles.buttonContainer}>
-          <Button
-            mode="contained"
-            style={styles.button}
-            onPress={() => navigation.navigate('ProfileScreen')}>
-            Perfil
-          </Button>
-          <Button
-            mode="contained"
-            style={styles.button}
-            onPress={() => navigation.navigate('Chat')}>
-            Chat
-          </Button>
-          <Button
-            mode="contained"
-            style={styles.button}
-            onPress={() => navigation.navigate('Appointment')}>
-            Próxima Cita
-          </Button>
+      <Image
+        style={styles.image}
+        source={{
+          uri: 'https://img.freepik.com/foto-gratis/cerrar-gente-feliz-celebrando-juntos_23-2149212149.jpg',
+        }}
+      />
 
-          <Button
-            mode="contained"
-            style={styles.button}
-            onPress={async () => close()}>
-            Salir
-          </Button>
+      <View style={styles.containerCurve}>
+        <View style={styles.curved}>
+          <Text style={styles.titleText}>Tu próxima cita te espera</Text>
+          <Text style={styles.subtitleText}>Elige tu proximo evento</Text>
+          <View style={styles.cardsContainer}>
+            <FlatList
+              scrollEnabled={false}
+              data={dates}
+              keyExtractor={item => item.id}
+              renderItem={renderCard}
+            />
+          </View>
+
+          <TouchableOpacity
+            style={styles.confirmButton}
+            onPress={() =>
+              Alert.alert(
+                'Confirmar Reserva',
+                `Quieres reservar para ${selected.length == 1 ? 'el dia' : 'los dias'} \n\n ${
+                  selected.length == 1
+                    ? [
+                        dates[selected].day +
+                          ' ' +
+                          dates[selected].date +
+                          ' de ' +
+                          dates[selected].month,
+                      ]
+                    : selected
+                        .sort((a, b) => a - b)
+                        .map(i => [
+                          dates[i].day +
+                            ' ' +
+                            dates[i].date +
+                            ' de ' +
+                            dates[i].month,
+                        ])
+                        .join('\n\n')
+                } 
+               `,
+                [
+                  {
+                    text: 'Cancel',
+                    onPress: () => console.log('Cancel Pressed'),
+                    style: 'cancel',
+                  },
+                  {text: 'OK', onPress: () => console.log('OK Pressed')},
+                ],
+              )
+            }>
+            <Text style={styles.confirmButtonText}>Reservar</Text>
+          </TouchableOpacity>
         </View>
       </View>
+
+      <Footer navigation={navigation} />
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f4f4f4',
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    marginBottom: 40,
-  },
-  buttonContainer: {
-    width: '80%',
-  },
-  button: {
-    marginVertical: 10,
-  },
-});
 
 export default HomeScreen;
