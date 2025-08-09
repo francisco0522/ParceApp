@@ -10,118 +10,44 @@ import {
 import Footer from '../Footer/Footer';
 import styles from './styles';
 import {FlatList} from 'react-native-gesture-handler';
-
-const dates = [
-  {id: '0', day: 'Miercoles', date: '23', month: 'Abril', time: '7:00 PM'},
-  {id: '1', day: 'Viernes', date: '24', month: 'Abril', time: '7:00 PM'},
-  {id: '2', day: 'Sábado', date: '26', month: 'Abril', time: '7:00 PM'},
-];
+import {useSelector} from 'react-redux';
 
 const HomeScreen = ({navigation}) => {
-  const [selected, setSelected] = useState([]);
-  const toggleSelect = id => {
-    if (selected.includes(id)) {
-      setSelected(prev => prev.filter(item => item !== id));
-      console.log(selected);
-    } else {
-      setSelected(prev => [...prev, id]);
-      console.log(selected);
-    }
-  };
-  const renderCard = ({item}) => {
-    const isSelected = selected.includes(item.id);
-    console.log(isSelected);
-    return (
-      <TouchableOpacity
-        style={isSelected ? styles.cardSelected : styles.card}
-        onPress={() => toggleSelect(item.id)}>
-        <View>
-          <Text
-            style={
-              isSelected ? styles.cardDateTextSelected : styles.cardDateText
-            }>
-            {item.day}, {item.date} de {item.month}
-          </Text>
-          <Text
-            style={
-              isSelected ? styles.cardTimeTextSelected : styles.cardTimeText
-            }>
-            {item.time}
-          </Text>
-        </View>
-        <View>
-          <Text
-            style={isSelected ? styles.cardCheckSelected : styles.cardCheck}>
-            ✔
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const name = useSelector(state => state.user.name);
 
   return (
     <SafeAreaView style={styles.container}>
-      <Image
-        style={styles.image}
-        source={{
-          uri: 'https://img.freepik.com/foto-gratis/cerrar-gente-feliz-celebrando-juntos_23-2149212149.jpg',
-        }}
-      />
-
-      <View style={styles.containerCurve}>
-        <View style={styles.curved}>
-          <Text style={styles.titleText}>Tu próxima cita te espera</Text>
-          <Text style={styles.subtitleText}>Elige tu proximo evento</Text>
-          <View style={styles.cardsContainer}>
-            <FlatList
-              scrollEnabled={false}
-              data={dates}
-              keyExtractor={item => item.id}
-              renderItem={renderCard}
-            />
-          </View>
-
+      <Text style={styles.titleText}>Bienvenido {name}</Text>
+      <View style={styles.gridOptions}>
+        <View style={styles.rowGrid}>
           <TouchableOpacity
-            style={styles.confirmButton}
-            onPress={() =>
-              Alert.alert(
-                'Confirmar Reserva',
-                `Quieres reservar para ${selected.length == 1 ? 'el dia' : 'los dias'} \n\n ${
-                  selected.length == 1
-                    ? [
-                        dates[selected].day +
-                          ' ' +
-                          dates[selected].date +
-                          ' de ' +
-                          dates[selected].month,
-                      ]
-                    : selected
-                        .sort((a, b) => a - b)
-                        .map(i => [
-                          dates[i].day +
-                            ' ' +
-                            dates[i].date +
-                            ' de ' +
-                            dates[i].month,
-                        ])
-                        .join('\n\n')
-                } 
-               `,
-                [
-                  {
-                    text: 'Cancel',
-                    onPress: () => console.log('Cancel Pressed'),
-                    style: 'cancel',
-                  },
-                  {text: 'OK', onPress: () => console.log('OK Pressed')},
-                ],
-              )
-            }>
-            <Text style={styles.confirmButtonText}>Reservar</Text>
+            style={styles.button}
+            onPress={() => navigation.navigate('MiercolesCenaScreen')}>
+            <Text style={styles.iconButton}>🍴</Text>
+            <Text style={styles.textButton}>Miercoles</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.navigate('ViernesCasualScreen')}>
+            <Text style={styles.iconButton}>🍻</Text>
+            <Text style={styles.textButton}>Viernes</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.rowGrid}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.navigate('SabadoBrunchScreen')}>
+            <Text style={styles.iconButton}>🥐</Text>
+            <Text style={styles.textButton}>Sábado</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.navigate('SabadoFiestaScreen')}>
+            <Text style={styles.iconButton}>🎉</Text>
+            <Text style={styles.textButton}>Sábado</Text>
           </TouchableOpacity>
         </View>
       </View>
-
       <Footer navigation={navigation} />
     </SafeAreaView>
   );
