@@ -10,6 +10,10 @@ import {
   ProfileScreen,
   HomeScreen,
   Footer,
+  MiercolesCenaScreen,
+  ViernesCasualScreen,
+  SabadoBrunchScreen,
+  SabadoFiestaScreen,
 } from './src/screens/index.js';
 import {decode, encode} from 'base-64';
 import rootReducer from './src/app/rooReducer.js';
@@ -42,6 +46,22 @@ export default function App() {
             component={RegistrationScreen}
           />
           <Stack.Screen name="HomeScreen" component={HomeScreen} />
+          <Stack.Screen
+            name="MiercolesCenaScreen"
+            component={MiercolesCenaScreen}
+          />
+          <Stack.Screen
+            name="ViernesCasualScreen"
+            component={ViernesCasualScreen}
+          />
+          <Stack.Screen
+            name="SabadoBrunchScreen"
+            component={SabadoBrunchScreen}
+          />
+          <Stack.Screen
+            name="SabadoFiestaScreen"
+            component={SabadoFiestaScreen}
+          />
           <Stack.Screen
             name="ProfileCreationScreen"
             component={ProfileCreationScreen}

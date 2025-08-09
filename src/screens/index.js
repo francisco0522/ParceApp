@@ -5,3 +5,7 @@ export {default as ProfileCreationScreen} from './ProileCreationScreen/ProfileCr
 export {default as ProfileScreen} from './ProfileScreen/ProfileScreen';
 export {default as HomeScreen} from './HomeScreen/HomeScreen';
 export {default as Footer} from './Footer/Footer';
+export {default as MiercolesCenaScreen} from './MiercolesCenaScreen/MiercolesCenaScreen';
+export {default as ViernesCasualScreen} from './ViernesCasualScreen/ViernesCasualScreen';
+export {default as SabadoBrunchScreen} from './SabadoBrunchScreen/SabadoBrunchScreen';
+export {default as SabadoFiestaScreen} from './SabadoFiestaScreen/SabadoFiestaScreen';
