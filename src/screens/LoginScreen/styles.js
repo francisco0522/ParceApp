@@ -4,7 +4,7 @@ export default StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: '#b39c8b',
+    backgroundColor: '#878787ff',
   },
   title: {},
   logo: {
@@ -15,7 +15,7 @@ export default StyleSheet.create({
     resizeMode: 'contain',
   },
   input: {
-    height: 48,
+    height: 50,
     borderRadius: 5,
     overflow: 'hidden',
     backgroundColor: '#f1f3f4',

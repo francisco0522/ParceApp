@@ -9,25 +9,23 @@ export default StyleSheet.create({
     height: 100,
     justifyContent: 'space-between',
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: '#000000ff',
     borderTopWidth: 1,
-    borderTopColor: '#b39c8b',
-  },
-  footerText: {
-    color: '#ffffff',
+    borderTopColor: '#ffffffff',
   },
 
   button: {
+    marginTop: 5,
+    alignItems: 'center',
     paddingTop: 10,
-
     justifyContent: 'center',
     width: '20%',
     height: 50,
   },
 
-  buttonText: {
-    textAlign: 'center',
-    fontSize: 30,
-    color: 'white',
+  textButton: {
+    color: '#fff',
+    marginTop: 5,
+    fontSize: 13,
   },
 });
