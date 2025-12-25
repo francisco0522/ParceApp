@@ -4,7 +4,7 @@ import {Button} from 'react-native-paper';
 export default StyleSheet.create({
   container: {
     height: '100%',
-    alignItems: 'center',
+    backgroundColor: '#fff',
   },
 
   title: {
@@ -14,36 +14,88 @@ export default StyleSheet.create({
   },
 
   titleText: {
-    fontSize: 30,
-    margin: 30,
-    fontWeight: 800,
+    marginTop: 100,
+    fontSize: 50,
+    paddingHorizontal: 30,
+    fontWeight: 600,
+  },
+
+  subtitleText: {
+    fontSize: 40,
+    paddingHorizontal: 30,
+    fontWeight: 600,
+    paddingBottom: 50,
   },
   gridOptions: {
-    width: '90%',
+    width: '100%',
     flexDirection: 'column',
-    height: '70%',
-    justifyContent: 'center',
+    paddingHorizontal: 30,
   },
   rowGrid: {
+    marginBottom: 5,
     width: '100%',
     justifyContent: 'space-between',
     flexDirection: 'row',
   },
-  button: {
-    marginBottom: 40,
-    width: '40%',
-    height: 200,
+  button1: {
+    width: '49%',
+    height: 120,
     justifyContent: 'center',
+    backgroundColor: '#d0e7f3ff',
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  button2: {
+    width: '49%',
+    height: 120,
+    justifyContent: 'center',
+    backgroundColor: '#d7d7d7ff',
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  button3: {
+    width: '49%',
+    height: 120,
+    justifyContent: 'center',
+    backgroundColor: '#c5ffcdff',
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  button4: {
+    width: '49%',
+    height: 120,
+    justifyContent: 'center',
+    backgroundColor: '#fcffc9ff',
+    borderRadius: 20,
+    alignItems: 'center',
   },
 
   textButton: {
     textAlign: 'center',
-    fontSize: 20,
-    fontWeight: 800,
+    fontSize: 18,
+    fontWeight: 400,
+    paddingTop: 15,
   },
 
-  iconButton: {
+  iconButton2: {
     textAlign: 'center',
-    fontSize: 80,
+    height: 30,
+    width: 30,
+    padding: 5,
+  },
+  headerButton: {
+    width: 50,
+    borderColor: '#d8d8d8ff',
+    borderWidth: 3,
+    height: 50,
+    borderRadius: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerButtons: {
+    paddingHorizontal: 30,
+    justifyContent: 'space-between',
+    flexDirection: 'row',
+    width: '100%',
   },
 });
