@@ -1,102 +1,139 @@
-import React from 'react';
-import {View, Text, Image, StyleSheet, TouchableOpacity} from 'react-native';
-import {Card, Avatar} from 'react-native-paper';
+import React, {useEffect, useState} from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ActivityIndicator,
+  ScrollView,
+} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {useSelector, useDispatch} from 'react-redux';
+import {Avatar, Card} from 'react-native-paper';
+import {getAuth} from 'firebase/auth';
+import {getFirestore, doc, onSnapshot} from 'firebase/firestore';
+import {firebaseApp} from '../../firebase/config';
+import styles from './styles';
 
-const ProfileScreen = ({navigation}) => {
-  const name = useSelector(state => state.user.name);
-  const birthDate = useSelector(state => state.user.birthDate);
-  const phone = useSelector(state => state.user.phone);
-  const email = useSelector(state => state.user.email);
+export default function ProfileScreen({navigation}) {
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const user = {
-    name: name,
-    birthDate: birthDate,
-    email: email,
-    phone: phone,
-    profilePic: 'https://randomuser.me/api/portraits/men/1.jpg',
+  const auth = getAuth(firebaseApp);
+  const db = getFirestore(firebaseApp);
+  const user = auth.currentUser;
+  useEffect(() => {
+    if (!user) return;
+
+    const ref = doc(db, 'users', user.uid);
+
+    const unsubscribe = onSnapshot(ref, snap => {
+      if (snap.exists()) {
+        setUserData(snap.data());
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const formatDate = timestamp => {
+    if (!timestamp) return '';
+    return new Date(timestamp.seconds * 1000).toLocaleDateString('es-CO', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
   };
-  console.log(user);
+
+  const renderItem = (icon, label, value) => (
+    <View style={styles.row}>
+      <Text style={styles.rowIcon}>{icon}</Text>
+      <View>
+        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={styles.rowValue}>{value || '—'}</Text>
+      </View>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size="large" />
+      </SafeAreaView>
+    );
+  }
+
+  if (!userData) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text>No se pudo cargar el perfil</Text>
+      </SafeAreaView>
+    );
+  }
+
+  const prefs = userData.profileAnswers || {};
+
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableOpacity
-        style={styles.buttonReturn}
-        onPress={() => navigation.navigate('HomeScreen')}>
-        <Text style={styles.buttonText}>Volver</Text>
-      </TouchableOpacity>
-      <View style={styles.cardContainer}>
-        <View style={styles.profileHeader}>
-          <Avatar.Image size={80} source={{uri: user.profilePic}} />
-          <Text style={styles.name}>{user.name}</Text>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* HEADER */}
+        <View style={styles.header}>
+          <Avatar.Image
+            size={90}
+            source={{uri: 'https://randomuser.me/api/portraits/men/1.jpg'}}
+          />
+          <Text style={styles.name}>{userData.fullName}</Text>
+          <Text style={styles.email}>{userData.emailText}</Text>
         </View>
+
+        {/* BASIC INFO */}
         <Card style={styles.card}>
           <Card.Content>
-            <Text style={styles.info}>🎂 {user.birthDate}</Text>
-            <Text style={styles.info}>📧 {user.email}</Text>
-            <Text style={styles.info}>📱 {user.phone}</Text>
+            {renderItem(
+              '🎂',
+              'Fecha de nacimiento',
+              formatDate(userData.birthDate),
+            )}
+            {renderItem(
+              '✅',
+              'Perfil',
+              userData.profileCompleted ? 'Completado' : 'Incompleto',
+            )}
           </Card.Content>
         </Card>
+
+        {/* DINNER PREFERENCES */}
+        <Text style={styles.sectionTitle}>Preferencias de cena</Text>
+
+        <Card style={styles.card}>
+          <Card.Content>
+            {renderItem('🍽', 'Alimentación', prefs.foodType)}
+            {renderItem('💰', 'Presupuesto', prefs.budget)}
+            {renderItem(
+              '👥',
+              'Grupo mixto',
+              prefs.comfortableMixedGroup ? 'Sí' : 'No',
+            )}
+            {renderItem(
+              '⚥',
+              'Grupo de un solo género',
+              prefs.comfortableSingleGenderGroup ? 'Sí' : 'No',
+            )}
+            {renderItem('🗣', 'Idiomas', prefs.preferredLanguage?.join(', '))}
+            {renderItem(
+              '🎭',
+              'Personalidad',
+              prefs.dinnerPersonality?.join(', '),
+            )}
+          </Card.Content>
+        </Card>
+
+        {/* ACTION */}
         <TouchableOpacity
-          style={styles.buttonProfileCreation}
+          style={styles.editButton}
           onPress={() => navigation.navigate('ProfileCreationScreen')}>
-          <Text style={styles.buttonText}>Formulario</Text>
-          Formulario
+          <Text style={styles.editButtonText}>Editar preferencias</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#b39c8b',
-  },
-  cardContainer: {
-    paddingTop: 10,
-    alignItems: 'center',
-    backgroundColor: '#b39c8b',
-  },
-  buttonReturn: {
-    width: 100,
-    marginLeft: 10,
-    marginTop: 50,
-    height: 50,
-    borderRadius: 20,
-    borderColor: 'white',
-    backgroundColor: '#3293a8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  card: {
-    width: '90%',
-    borderRadius: 10,
-  },
-  profileHeader: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  name: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginTop: 10,
-  },
-  info: {
-    fontSize: 16,
-    margin: 2,
-  },
-  buttonProfileCreation: {
-    marginTop: 50,
-    width: '60%',
-    height: 50,
-    borderRadius: 20,
-    borderColor: 'white',
-    backgroundColor: '#3293a8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonText: {color: 'white', fontSize: 15, fontWeight: 600},
-});
-
-export default ProfileScreen;
+}

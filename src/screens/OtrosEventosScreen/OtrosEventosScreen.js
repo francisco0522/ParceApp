@@ -23,6 +23,9 @@ import {
   doc,
   runTransaction,
   Timestamp,
+  query,
+  where,
+  getDocs,
 } from 'firebase/firestore';
 
 import {useDispatch, useSelector} from 'react-redux';
@@ -38,7 +41,7 @@ const OtrosEventosScreen = ({navigation}) => {
 
   const fullName = useSelector(state => state.user.name);
   const userId = useSelector(state => state.user.id);
-
+ 
   /* ---------------- ESTADOS ---------------- */
 
   const [selectedDate, setSelectedDate] = useState(null);
@@ -149,6 +152,95 @@ const OtrosEventosScreen = ({navigation}) => {
         console.error(error);
         Alert.alert('Error', 'No se pudo crear el evento');
       }
+    }
+  };
+
+  const reservarEvento = async () => {
+    try {
+      if (!userId || !fullName) {
+        Alert.alert('Error', 'Usuario no válido');
+        return;
+      }
+
+      if (!selectedEvents.length) {
+        Alert.alert('Error', 'No hay eventos seleccionados');
+        return;
+      }
+
+      const db = getFirestore(firebaseApp);
+      const userRef = doc(db, 'users', userId);
+
+      for (const eventId of selectedEvents) {
+        const eventoRef = doc(db, 'eventos', eventId);
+
+        await runTransaction(db, async transaction => {
+          const eventoSnap = await transaction.get(eventoRef);
+          const userSnap = await transaction.get(userRef);
+
+          if (!eventoSnap.exists()) {
+            throw new Error('EVENT_NOT_FOUND');
+          }
+
+          if (!userSnap.exists()) {
+            throw new Error('USER_NOT_FOUND');
+          }
+
+          const evento = eventoSnap.data();
+          const users = evento.users || [];
+
+          // ⛔ ya inscrito
+          if (users.some(u => u.uid === userId)) {
+            throw new Error('ALREADY_REGISTERED');
+          }
+
+          // ⛔ capacidad llena
+          if (evento.capacity && users.length >= evento.capacity) {
+            throw new Error('EVENT_FULL');
+          }
+
+          const userData = {
+            uid: userId,
+            fullName,
+          };
+
+          /* ---------- ACTUALIZAR EVENTO ---------- */
+          transaction.update(eventoRef, {
+            users: [...users, userData],
+          });
+
+          /* ---------- ACTUALIZAR USUARIO ---------- */
+          const reservas = userSnap.data().reservas || [];
+
+          if (!reservas.some(r => r.eventId === eventId)) {
+            transaction.update(userRef, {
+              reservas: [
+                ...reservas,
+                {
+                  eventId,
+                  title: evento.title,
+                  date: evento.date,
+                  reservedAt: Timestamp.now(),
+                },
+              ],
+            });
+          }
+        });
+      }
+
+      Alert.alert('Reserva exitosa', 'Te uniste a los eventos');
+      setSelectedEvents([]);
+      dispatch(fetchEventos());
+    } catch (error) {
+      console.error(error);
+
+      const map = {
+        USER_NOT_FOUND: 'Usuario no encontrado',
+        EVENT_NOT_FOUND: 'Evento no encontrado',
+        EVENT_FULL: 'Evento lleno',
+        ALREADY_REGISTERED: 'Ya estás inscrito',
+      };
+
+      Alert.alert('Error', map[error.message] || 'Error inesperado');
     }
   };
 
@@ -327,7 +419,7 @@ const OtrosEventosScreen = ({navigation}) => {
         {selectedEvents.length > 0 && (
           <TouchableOpacity
             style={styles.confirmButton}
-            onPress={() => reservar()}>
+            onPress={() => reservarEvento()}>
             <Text style={styles.confirmButtonText}>
               Reservar ({selectedEvents.length})
             </Text>
