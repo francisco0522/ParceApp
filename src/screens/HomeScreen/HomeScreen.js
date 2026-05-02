@@ -111,7 +111,7 @@ const HomeScreen = ({navigation}) => {
         <View style={styles.rowGrid}>
           <TouchableOpacity
             style={styles.button3}
-            onPress={() => navigation.navigate('SabadoBrunchScreen')}>
+            onPress={() => navigation.navigate('MyAgendaScreen')}>
             <Image
               style={{
                 height: 40,

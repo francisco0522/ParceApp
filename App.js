@@ -12,6 +12,7 @@ import {
   Footer,
   MiercolesCenaScreen,
   OtrosEventosScreen,
+  MyAgendaScreen,
 } from './src/screens/index.js';
 import {decode, encode} from 'base-64';
 import rootReducer from './src/app/rooReducer.js';
@@ -53,6 +54,7 @@ export default function App() {
             name="OtrosEventosScreen"
             component={OtrosEventosScreen}
           />
+          <Stack.Screen name="MyAgendaScreen" component={MyAgendaScreen} />
           <Stack.Screen
             name="ProfileCreationScreen"
             component={ProfileCreationScreen}

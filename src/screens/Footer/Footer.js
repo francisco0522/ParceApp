@@ -61,7 +61,10 @@ const Footer = ({navigation}) => {
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.navigate('ProfileScreen')}>
+        onPress={() =>
+          //navigation.navigate('ProfileScreen')
+          close()
+        }>
         <Image
           style={{
             height: 30,

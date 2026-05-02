@@ -3,32 +3,27 @@ import {StyleSheet} from 'react-native';
 export default StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    backgroundColor: '#b39c8b',
-    justifyContent: 'center',
+    backgroundColor: '#2b2b2bff',
   },
   containerTitle: {marginTop: 30, alignItems: 'center'},
   title: {color: 'white', fontSize: 30, fontWeight: 'bold'},
-  logo: {
-    flex: 1,
-    width: 300,
-    alignSelf: 'center',
-    margin: 10,
-    resizeMode: 'contain',
+  subtitle: {color: 'white', fontSize: 15, fontWeight: 'bold'},
+  question: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+    paddingHorizontal: 30,
+    textAlign: 'center',
   },
-  input: {
-    height: 48,
-    borderRadius: 5,
-    overflow: 'hidden',
-    backgroundColor: '#f1f3f4',
-    marginTop: 10,
-    marginBottom: 10,
-    marginLeft: 30,
-    marginRight: 30,
-    paddingLeft: 16,
+
+  containerPregunta: {
+    width: '100%',
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   button: {
-    width: '80%',
+    width: 200,
     backgroundColor: '#fff',
     marginLeft: 30,
     marginRight: 30,
@@ -38,23 +33,40 @@ export default StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  buttonTitle: {
-    color: '#b39c8b',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  footerView: {
-    flex: 1,
-    alignItems: 'center',
+
+  buttonSelected: {
+    width: 200,
+    backgroundColor: '#67aaa9ff',
+    marginLeft: 30,
+    marginRight: 30,
     marginTop: 20,
+    height: 48,
+    borderRadius: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  footerText: {
+
+  buttonTitle: {
+    color: '#000',
     fontSize: 16,
-    color: '#2e2e2d',
-  },
-  footerLink: {
-    color: '#788eec',
     fontWeight: 'bold',
+  },
+
+  back: {
+    width: 200,
+    borderWidth: 1,
+    borderColor: '#fff',
+    marginLeft: 30,
+    marginRight: 30,
+    marginTop: 20,
+    height: 48,
+    borderRadius: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backText: {
+    color: '#fff',
     fontSize: 16,
+    fontWeight: 'bold',
   },
 });

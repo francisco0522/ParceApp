@@ -3,55 +3,76 @@ import {StyleSheet} from 'react-native';
 export default StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F7F5F2',
+    paddingHorizontal: 16,
+  },
+
+  header: {
     alignItems: 'center',
-    backgroundColor: '#b39c8b',
+    marginVertical: 24,
   },
-  title: {},
-  logo: {
-    flex: 1,
-    width: 300,
-    alignSelf: 'center',
-    margin: 10,
-    resizeMode: 'contain',
+
+  name: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginTop: 12,
+    color: '#1F2937',
   },
-  input: {
-    height: 48,
-    borderRadius: 5,
-    overflow: 'hidden',
-    backgroundColor: '#f1f3f4',
-    marginTop: 10,
-    marginBottom: 10,
-    marginLeft: 30,
-    marginRight: 30,
-    paddingLeft: 16,
+
+  email: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 4,
   },
-  button: {
-    backgroundColor: '#788eec',
-    marginLeft: 30,
-    marginRight: 30,
-    marginTop: 20,
-    height: 48,
-    borderRadius: 5,
+
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 24,
+    marginBottom: 8,
+    color: '#1F2937',
+  },
+
+  card: {
+    borderRadius: 16,
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+  },
+
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 14,
+  },
+
+  rowIcon: {
+    fontSize: 18,
+    width: 30,
+  },
+
+  rowLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+
+  rowValue: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#111827',
+  },
+
+  editButton: {
+    marginTop: 30,
+    marginBottom: 40,
+    backgroundColor: '#3293A8',
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  buttonTitle: {
-    color: 'white',
+
+  editButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
-  },
-  footerView: {
-    flex: 1,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  footerText: {
-    fontSize: 16,
-    color: '#2e2e2d',
-  },
-  footerLink: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -7,3 +7,4 @@ export {default as HomeScreen} from './HomeScreen/HomeScreen';
 export {default as Footer} from './Footer/Footer';
 export {default as MiercolesCenaScreen} from './MiercolesCenaScreen/MiercolesCenaScreen';
 export {default as OtrosEventosScreen} from './OtrosEventosScreen/OtrosEventosScreen';
+export {default as MyAgendaScreen} from './MyAgendaScreen/MyAgendaScreen';

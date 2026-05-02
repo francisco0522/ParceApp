@@ -14,7 +14,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import styles from './styles';
 import {getAuth, createUserWithEmailAndPassword} from 'firebase/auth';
 import {firebaseApp} from '../../firebase/config';
-import {getFirestore, collection, addDoc} from 'firebase/firestore';
+import {getFirestore, collection, setDoc, doc} from 'firebase/firestore';
 import {useDispatch} from 'react-redux';
 import {setId, setName, setEmail, setBirthDate} from '../../slices/userSlice';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -41,7 +41,9 @@ export default function RegistrationScreen({navigation}) {
   const generos = [
     {label: 'Hombre', value: 'Hombre'},
     {label: 'Mujer', value: 'Mujer'},
+    {label: 'No binario', value: 'No binario'},
     {label: 'Otro', value: 'Otro'},
+    {label: 'Prefiero no decirlo', value: 'Prefiero no decirlo'},
   ];
 
   const dispatch = useDispatch();
@@ -83,40 +85,40 @@ export default function RegistrationScreen({navigation}) {
 
   /* ---------------- REGISTER ---------------- */
   const onRegisterPress = async () => {
-    // if (!fullName || !emailText || !password || !birthDate) {
-    //   Alert.alert('Error', 'Completa todos los campos');
-    //   return;
-    // }
-    // try {
-    //   const auth = getAuth(firebaseApp);
-    //   const userCredential = await createUserWithEmailAndPassword(
-    //     auth,
-    //     emailText,
-    //     password,
-    //   );
-    //   const uid = userCredential.user.uid;
-    //   const db = getFirestore(firebaseApp);
-    //   await addDoc(collection(db, 'users'), {
-    //     id: uid,
-    //     fullName,
-    //     emailText,
-    //     birthDate,
-    //     createdAt: new Date(),
-    //   });
-    //   dispatch(setId(uid));
-    //   dispatch(setName(fullName));
-    //   dispatch(setEmail(emailText));
-    //   dispatch(setBirthDate(birthDate));
-    //   await AsyncStorage.multiSet([
-    //     ['id', uid],
-    //     ['fullName', fullName],
-    //     ['email', emailText],
-    //     ['userStatus', 'Login'],
-    //   ]);
-    //   navigation.replace('ProfileCreationScreen');
-    // } catch (error) {
-    //   Alert.alert('Error', 'No se pudo crear la cuenta');
-    // }
+    if (!fullName || !emailText || !password || !birthDate) {
+      Alert.alert('Error', 'Completa todos los campos');
+      return;
+    }
+    try {
+      const auth = getAuth(firebaseApp);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        emailText,
+        password,
+      );
+      const uid = userCredential.user.uid;
+      const db = getFirestore(firebaseApp);
+      await setDoc(doc(db, 'users', uid), {
+        fullName,
+        emailText,
+        birthDate,
+        createdAt: new Date(),
+        profileCompleted: false,
+      });
+      dispatch(setId(uid));
+      dispatch(setName(fullName));
+      dispatch(setEmail(emailText));
+      dispatch(setBirthDate(birthDate));
+      await AsyncStorage.multiSet([
+        ['id', uid],
+        ['fullName', fullName],
+        ['email', emailText],
+        ['userStatus', 'Login'],
+      ]);
+      navigation.replace('ProfileCreationScreen');
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo crear la cuenta');
+    }
   };
 
   /* ---------------- UI ---------------- */
@@ -162,6 +164,7 @@ export default function RegistrationScreen({navigation}) {
           </TouchableOpacity>
 
           <DatePicker
+            mode="date"
             modal
             open={openBirthDate}
             date={birthDate || minAdultDate}
