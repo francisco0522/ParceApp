@@ -33,9 +33,11 @@ import {useSelector, useDispatch} from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen({navigation}) {
+  // Estado local para los campos del formulario de acceso.
   const [emailText, setEmailText] = useState('');
   const [password, setPassword] = useState('');
   const dispatch = useDispatch();
+  // Navega a la pantalla de registro cuando el usuario no tiene cuenta.
 
   const onFooterLinkPress = () => {
     navigation.navigate('RegistrationScreen');
@@ -44,10 +46,12 @@ export default function LoginScreen({navigation}) {
   useEffect(() => {}, []);
 
   const onLoginPress = async () => {
+    // Inicializa autenticación con Firebase para validar credenciales.
     const auth = getAuth(firebaseApp);
 
     signInWithEmailAndPassword(auth, emailText, password)
       .then(async response => {
+        // Obtiene el UID autenticado para buscar el perfil en Firestore.
         const uid = response.user.uid;
         const db = getFirestore(firebaseApp);
         const q = query(collection(db, 'users'), where('id', '==', uid));
@@ -55,17 +59,20 @@ export default function LoginScreen({navigation}) {
         const querySnapshot = await getDocs(q);
 
         querySnapshot.forEach(async document => {
+          // Carga documento completo del usuario para poblar estado global y almacenamiento local.
           const docID = document.id;
           const docRef = doc(db, 'users', docID);
           const docSnap = await getDoc(docRef);
 
           if (docSnap.exists()) {
             const data = docSnap.data();
+            // Guarda datos del usuario en Redux para uso en toda la aplicación.
             dispatch(setName(data.fullName));
             dispatch(setEmail(data.emailText));
             dispatch(setBirthDate(data.birthDate));
             dispatch(setPhone(data.phone));
             dispatch(setId(data.id));
+            // Persiste datos mínimos en AsyncStorage para mantener sesión entre reinicios.
             await AsyncStorage.setItem('fullName', data.fullName);
             await AsyncStorage.setItem('email', data.emailText);
             await AsyncStorage.setItem('id', data.id);
@@ -73,6 +80,7 @@ export default function LoginScreen({navigation}) {
             await AsyncStorage.setItem('birthDate', data.birthDate);
             await AsyncStorage.setItem('userStatus', 'Login');
             console.log('aqui');
+            // Reemplaza la pantalla actual para evitar volver al login con botón atrás.
             navigation.replace('HomeScreen');
           } else {
             // docSnap.data() will be undefined in this case
@@ -90,10 +98,12 @@ export default function LoginScreen({navigation}) {
       <KeyboardAvoidingView
         style={{flex: 1, width: '100%'}}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        {/* Identidad visual de la app en el acceso */}
         <Image
           style={styles.logo}
           source={require('../../../assets/logo.png')}
         />
+        {/* Campo de correo */}
         <TextInput
           style={styles.input}
           placeholder="Correo Electronico"
@@ -103,6 +113,7 @@ export default function LoginScreen({navigation}) {
           underlineColorAndroid="transparent"
           autoCapitalize="none"
         />
+        {/* Campo de contraseña */}
         <TextInput
           style={styles.input}
           placeholderTextColor="#aaaaaa"
@@ -113,9 +124,11 @@ export default function LoginScreen({navigation}) {
           underlineColorAndroid="transparent"
           autoCapitalize="none"
         />
+        {/* Acción principal para iniciar sesión */}
         <TouchableOpacity style={styles.button} onPress={() => onLoginPress()}>
           <Text style={styles.buttonTitle}>Iniciar Sesión</Text>
         </TouchableOpacity>
+        {/* Acceso secundario para registro */}
         <View style={styles.footerView}>
           <Text style={styles.footerText}>
             No tienes cuenta?{' '}
