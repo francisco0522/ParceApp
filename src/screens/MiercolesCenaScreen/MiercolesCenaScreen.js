@@ -1,270 +1,196 @@
-import React, {useState, useEffect} from 'react';
-import {TouchableOpacity, Text, Image, View, Alert} from 'react-native';
+import React, {useEffect, useRef, useState} from 'react';
+import {Alert, FlatList, Text, TouchableOpacity, View} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {useSelector} from 'react-redux';
 import Footer from '../Footer/Footer';
 import styles from './styles';
-import {FlatList} from 'react-native-gesture-handler';
-import moment from 'moment';
-import {SafeAreaView} from 'react-native-safe-area-context';
-
-import 'moment/locale/es';
-moment.locale('es');
+import {listDinners, reserveActivity} from '../../services/activities';
 import {
-  getFirestore,
-  collection,
-  addDoc,
-  query,
-  where,
-  getDocs,
-  updateDoc,
-  doc,
-  runTransaction,
-} from 'firebase/firestore';
-import {useSelector} from 'react-redux';
-import {firebaseApp} from '../../firebase/config';
+  activityError,
+  formatActivityDate,
+  PILOT_CITIES,
+} from '../../models/activity';
 
 const MiercolesCenaScreen = ({navigation}) => {
-  const [selected, setSelected] = useState('');
-  const [dates, setDates] = useState([]);
-  const userId = useSelector(state => state.user.id);
-  const fullName = useSelector(state => state.user.name);
-  const toggleSelect = id => {
-    setSelected(id);
-  };
-
+  const uid = useSelector(state => state.user.id);
+  const name = useSelector(state => state.user.name);
+  const [city, setCity] = useState(null);
+  const [dinners, setDinners] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [retry, setRetry] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const pending = useRef(false);
+  const alive = useRef(true);
+  const currentUid = useRef(uid);
+  currentUid.current = uid;
   useEffect(() => {
-    const dates = getNextWednesdays();
-    setDates(dates);
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
   }, []);
-
-  const capitalize = text => text.charAt(0).toUpperCase() + text.slice(1);
-
-  const getNextWednesdays = () => {
-    const results = [];
-    const startDate = moment().add(2, 'days');
-
-    let current = startDate.clone();
-    const targetDay = 3; // miércoles
-
-    if (current.day() !== targetDay) {
-      current = current.day(targetDay);
-      if (current.isBefore(startDate)) {
-        current.add(1, 'week');
-      }
-    }
-
-    for (let i = 0; i < 3; i++) {
-      let dateToUse = current.clone();
-
-      // 🔥 Regla especial: si cae 24 o 31 diciembre → mover al día anterior (martes)
-      const isChristmasEve =
-        dateToUse.date() === 24 && dateToUse.month() === 11; // diciembre = 11
-      const isNYE = dateToUse.date() === 31 && dateToUse.month() === 11; // diciembre = 11
-
-      if (isChristmasEve || isNYE) {
-        dateToUse.subtract(1, 'day'); // lo mueve al martes 23 o 30
-      }
-
-      results.push({
-        id: `${i}`,
-        day: capitalize(dateToUse.format('dddd')),
-        date: dateToUse.format('D'),
-        month: capitalize(dateToUse.format('MMMM')),
-        time: '7:00 PM',
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
+    setSelected(null);
+    listDinners()
+      .then(data => {
+        if (active) {
+          setDinners(data);
+          setLoading(false);
+        }
+      })
+      .catch(failure => {
+        if (active) {
+          setError(activityError(failure));
+          setLoading(false);
+        }
       });
-
-      current = current.clone().add(1, 'week'); // siguiente miércoles
+    return () => {
+      active = false;
+    };
+  }, [retry, uid]);
+  useEffect(
+    () => navigation.addListener?.('focus', () => setRetry(value => value + 1)),
+    [navigation],
+  );
+  const reserve = async () => {
+    if (pending.current || !selected || !city) {
+      return;
     }
-
-    return results;
-  };
-
-  const reservar = async selectedDate => {
-    console.log(userId);
-    console.log(fullName);
+    const sessionUid = uid;
+    pending.current = true;
+    setBusy(true);
     try {
-      const db = getFirestore(firebaseApp);
-      const reservasRef = collection(db, 'reservas');
-
-      if (!userId || !fullName) {
-        Alert.alert('Error', 'Usuario no válido');
-        return;
+      await reserveActivity(uid, selected.id);
+      if (alive.current && currentUid.current === sessionUid) {
+        Alert.alert(
+          'Reserva confirmada',
+          `${selected.title}\n${PILOT_CITIES[selected.city].name}\n${formatActivityDate(selected)}\n${selected.venueName || 'Restaurante pendiente de asignación'}`,
+        );
+        setRetry(value => value + 1);
       }
-
-      const userData = {id: userId, fullName};
-
-      // 🔍 buscar documento del día
-      const q = query(
-        reservasRef,
-        where('day', '==', selectedDate.date),
-        where('month', '==', selectedDate.month),
-      );
-
-      const querySnapshot = await getDocs(q);
-
-      let reservaRef;
-
-      if (!querySnapshot.empty) {
-        reservaRef = doc(db, 'reservas', querySnapshot.docs[0].id);
-      } else {
-        // crear ref manual para la transacción
-        reservaRef = doc(reservasRef);
+    } catch (failure) {
+      if (alive.current && currentUid.current === sessionUid) {
+        Alert.alert('Reserva no realizada', activityError(failure));
       }
-
-      await runTransaction(db, async transaction => {
-        const reservaSnap = await transaction.get(reservaRef);
-
-        // 🆕 no existe → crear
-        if (!reservaSnap.exists()) {
-          transaction.set(reservaRef, {
-            dayNumber: selectedDate.day,
-            day: selectedDate.date,
-            month: selectedDate.month,
-            users: [userData],
-            maxUsers: 6,
-          });
-          return;
-        }
-
-        const reserva = reservaSnap.data();
-
-        // ⛔ cupos llenos
-        if (reserva.users.length >= reserva.maxUsers) {
-          throw new Error('FULL');
-        }
-
-        // ⛔ duplicado
-        const alreadyExists = reserva.users.some(user => user.id === userId);
-
-        if (alreadyExists) {
-          throw new Error('DUPLICATE');
-        }
-
-        // ✅ agregar usuario
-        transaction.update(reservaRef, {
-          users: [...reserva.users, userData],
-        });
-      });
-
-      Alert.alert('Reserva confirmada', 'Reserva realizada con éxito');
-    } catch (error) {
-      if (error.message === 'FULL') {
-        Alert.alert('Cupos llenos', 'Esta cena ya no tiene cupos');
-      } else if (error.message === 'DUPLICATE') {
-        Alert.alert('Ya registrado', 'Ya tienes una reserva este día');
-      } else {
-        console.error(error);
-        Alert.alert('Error', 'No se pudo realizar la reserva');
+    } finally {
+      pending.current = false;
+      if (alive.current) {
+        setBusy(false);
       }
     }
   };
-
-  const renderCard = ({item}) => {
-    const isSelected = selected.includes(item.id);
-    console.log(isSelected);
-    return (
-      <TouchableOpacity
-        style={isSelected ? styles.cardSelected : styles.card}
-        onPress={() => toggleSelect(item.id)}>
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            width: '100%',
-            alignItems: 'center',
-          }}>
-          <View
-            style={{
-              flexDirection: 'column',
-            }}>
-            <Text
-              style={
-                isSelected ? styles.cardDateTextSelected : styles.cardDateText
-              }>
-              {item.day}, {item.date} de {item.month}
-            </Text>
-            <Text
-              style={
-                isSelected ? styles.cardTimeTextSelected : styles.cardTimeText
-              }>
-              {item.time}
-            </Text>
-          </View>
-          {isSelected && (
-            <Image
-              style={{
-                height: 35,
-                width: 35,
-              }}
-              source={require('/Users/wolfcore/Documents/ParceApp/assets/controlar.png')}
-            />
-          )}
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
+  const dates = dinners.filter(
+    item =>
+      item.city === city &&
+      item.status === 'open' &&
+      new Date(item.startsAt).getTime() > Date.now(),
+  );
   return (
-    <SafeAreaView style={{flex: 1, backgroundColor: '#2b2b2bff'}}>
+    <SafeAreaView style={{flex: 1, backgroundColor: '#2b2b2b'}}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.titleText}>Hola {fullName}</Text>
-          <View style={styles.headerButtons}>
-            <TouchableOpacity style={styles.headerButton}>
-              <Image
-                style={{height: 30, width: 30}}
-                source={require('/Users/wolfcore/Documents/ParceApp/assets/pregunta.png')}
-              />
+        <Text style={styles.titleText}>Hola {name}</Text>
+        <Text style={styles.subtitleText}>Reserva tu próxima cena</Text>
+        <Text style={styles.cardTimeText}>Selecciona tu ciudad</Text>
+        <View style={{flexDirection: 'row'}}>
+          {Object.entries(PILOT_CITIES).map(([id, info]) => (
+            <TouchableOpacity
+              key={id}
+              disabled={busy}
+              style={city === id ? styles.cardSelected : styles.card}
+              onPress={() => {
+                setCity(id);
+                setSelected(null);
+              }}>
+              <Text style={styles.cardDateText}>
+                {info.name}
+                {city === id ? ' ✓' : ''}
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerButton}>
-              <Image
-                style={{height: 20, width: 20}}
-                source={require('/Users/wolfcore/Documents/ParceApp/assets/notificacion.png')}
-              />
-            </TouchableOpacity>
-          </View>
+          ))}
         </View>
-
-        <Text style={styles.subtitleText}>¡Reserva tu próxima cena!</Text>
-
-        <View style={styles.cardsContainer}>
+        {loading ? (
+          <Text style={styles.cardTimeText}>Cargando cenas…</Text>
+        ) : error ? (
+          <TouchableOpacity onPress={() => setRetry(value => value + 1)}>
+            <Text style={styles.cardTimeText}>{error} Reintentar</Text>
+          </TouchableOpacity>
+        ) : !city ? (
+          <Text style={styles.cardTimeText}>
+            Elige Cali o Formosa para ver las cenas programadas.
+          </Text>
+        ) : (
           <FlatList
-            scrollEnabled={false}
             data={dates}
             keyExtractor={item => item.id}
-            renderItem={renderCard}
+            ListEmptyComponent={
+              <Text style={styles.cardTimeText}>
+                No hay cenas programadas para esta ciudad.
+              </Text>
+            }
+            renderItem={({item}) => {
+              const full =
+                item.capacity !== null &&
+                item.participantCount >= item.capacity;
+              return (
+                <TouchableOpacity
+                  disabled={busy || full}
+                  style={
+                    selected?.id === item.id ? styles.cardSelected : styles.card
+                  }
+                  onPress={() => setSelected(item)}>
+                  <Text style={styles.cardDateText}>{item.title}</Text>
+                  <Text style={styles.cardTimeText}>
+                    {formatActivityDate(item)}
+                  </Text>
+                  <Text style={styles.cardTimeText}>
+                    {item.venueName || 'Restaurante pendiente de asignación'}
+                  </Text>
+                  <Text style={styles.cardTimeText}>
+                    {item.direction || 'Dirección pendiente'} · Grupo{' '}
+                    {item.groupId}
+                  </Text>
+                  <Text style={styles.cardTimeText}>
+                    {item.participantCount}/{item.capacity} ·{' '}
+                    {full ? 'Sin cupos' : 'Abierta'}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() =>
+                      navigation.navigate('ActivityDetailScreen', {
+                        activityId: item.id,
+                      })
+                    }>
+                    <Text style={styles.cardTimeText}>Ver detalles</Text>
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              );
+            }}
           />
-        </View>
-
+        )}
         <TouchableOpacity
+          disabled={!selected || busy || loading}
           style={styles.confirmButton}
           onPress={() =>
             Alert.alert(
-              'Confirmar Reserva',
-              `Quieres reservar para 'el dia' \n\n ${
-                dates[selected].day +
-                ' ' +
-                dates[selected].date +
-                ' de ' +
-                dates[selected].month
-              } 
-               `,
+              'Confirmar reserva',
+              `${selected.title}\n${PILOT_CITIES[selected.city].name}\n${formatActivityDate(selected)}`,
               [
-                {
-                  text: 'Cancel',
-                  onPress: () => console.log('Cancel Pressed'),
-                  style: 'cancel',
-                },
-                {text: 'OK', onPress: () => reservar(dates[selected])},
+                {text: 'Volver', style: 'cancel'},
+                {text: 'Reservar', onPress: reserve},
               ],
             )
           }>
-          <Text style={styles.confirmButtonText}>Reservar</Text>
+          <Text style={styles.confirmButtonText}>
+            {busy ? 'Reservando…' : 'Reservar'}
+          </Text>
         </TouchableOpacity>
       </View>
-
       <Footer navigation={navigation} />
     </SafeAreaView>
   );
 };
-
 export default MiercolesCenaScreen;

@@ -38,8 +38,7 @@ export default StyleSheet.create({
     color: '#fff',
     fontSize: 20,
     marginBottom: 20,
-    fontWeight: 300,
-    marginBottom: 20,
+    fontWeight: '300',
   },
 
   cardsContainer: {

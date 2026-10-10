@@ -40,8 +40,7 @@ export default StyleSheet.create({
     fontSize: 20,
     marginBottom: 20,
     marginTop: 20,
-    fontWeight: 300,
-    marginBottom: 20,
+    fontWeight: '300',
   },
 
   cardsContainer: {
