@@ -31,5 +31,14 @@ target 'ParceApp' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+    # fmt 11.0.2's consteval detection is incompatible with Apple Clang in
+    # Xcode 26.6. Its supported C++17 branch avoids that compiler error.
+    # Keep React Native/Folly on their configured C++20 standard.
+    installer.pods_project.targets.each do |target|
+      next unless target.name == 'fmt'
+      target.build_configurations.each do |build_configuration|
+        build_configuration.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+      end
+    end
   end
 end

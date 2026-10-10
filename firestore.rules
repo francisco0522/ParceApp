@@ -1,0 +1,135 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function own(uid) { return signedIn() && request.auth.uid == uid; }
+    function admin() { return signedIn() && request.auth.token.get('admin', false) == true; }
+    function shortText(v, max) { return v is string && v.size() > 0 && v.size() <= max; }
+    function nullableText(v, max) { return v == null || shortText(v, max); }
+    function pilotCity(v) { return v in ['cali', 'formosa']; }
+    function https(v) { return v is string && v.size() <= 2048 && v.matches('https://[a-zA-Z0-9][a-zA-Z0-9.-]*(:[0-9]+)?([/?#][^ ]*)?'); }
+    function reservationPath(uid, id) {
+      return /databases/$(database)/documents/users/$(uid)/reservations/$(id);
+    }
+    function activityPath(id) { return /databases/$(database)/documents/activityCatalog/$(id); }
+    function validActivity(d) {
+      return d.keys().hasAll(['schemaVersion','kind','title','startsAt','timeZone','capacity','participantCount','status','createdAt','city','direction','description','groupId','venueName','assignmentStatus'])
+        && d.keys().hasOnly(['schemaVersion','kind','title','startsAt','timeZone','capacity','participantCount','status','createdAt','city','direction','description','groupId','venueName','assignmentStatus'])
+        && d.schemaVersion == 2 && d.kind in ['dinner','event']
+        && shortText(d.title, 160) && d.startsAt is timestamp && d.createdAt is timestamp
+        && pilotCity(d.city)
+        && ((d.city == 'cali' && d.timeZone == 'America/Bogota') || (d.city == 'formosa' && d.timeZone == 'America/Argentina/Cordoba'))
+        && d.participantCount is int && d.participantCount >= 0
+        && (d.capacity == null || (d.capacity is int && d.capacity > 0 && d.capacity <= 10000 && d.participantCount <= d.capacity))
+        && d.status in ['open','cancelled','completed']
+        && nullableText(d.direction, 500) && d.description is string && d.description.size() <= 4000
+        && nullableText(d.groupId, 100) && nullableText(d.venueName, 200)
+        && d.assignmentStatus in ['pending','assigned']
+        && (d.assignmentStatus != 'assigned' || (d.venueName != null && d.direction != null))
+        && (d.kind != 'event' || d.direction != null)
+        && (d.kind != 'dinner' || (d.groupId != null && d.capacity != null));
+    }
+    function membershipIncrease(id) {
+      let path = reservationPath(request.auth.uid, id);
+      return resource.data.status == 'open' && resource.data.startsAt > request.time
+        && request.resource.data.participantCount == resource.data.participantCount + 1
+        && !exists(path) && existsAfter(path)
+        && getAfter(path).data.activityId == id
+        && getAfter(path).data.createdAt == request.time;
+    }
+    function membershipDecrease(id) {
+      let path = reservationPath(request.auth.uid, id);
+      return resource.data.startsAt > request.time
+        && request.resource.data.participantCount == resource.data.participantCount - 1
+        && exists(path) && !existsAfter(path);
+    }
+    match /activityCatalog/{id} {
+      allow read: if signedIn();
+      allow create: if admin() && validActivity(request.resource.data)
+        && request.resource.data.status == 'open'
+        && request.resource.data.startsAt > request.time
+        && request.resource.data.createdAt == request.time
+        && (request.resource.data.participantCount == 0 ||
+          (request.resource.data.participantCount == 1
+            && existsAfter(reservationPath(request.auth.uid, id))
+            && !exists(reservationPath(request.auth.uid, id))));
+      allow update: if signedIn() && validActivity(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.kind == resource.data.kind
+        && request.resource.data.schemaVersion == resource.data.schemaVersion
+        && ((admin() && request.resource.data.participantCount == resource.data.participantCount
+              && (resource.data.participantCount == 0 ||
+                (request.resource.data.startsAt == resource.data.startsAt
+                  && request.resource.data.city == resource.data.city
+                  && request.resource.data.timeZone == resource.data.timeZone
+                  && request.resource.data.groupId == resource.data.groupId)))
+          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantCount'])
+            && (membershipIncrease(id) || membershipDecrease(id))));
+      allow delete: if false;
+    }
+    function validProfile(d) {
+      return d.keys().hasAll(['fullName','emailText','birthDate','createdAt','profileCompleted'])
+        && d.keys().hasOnly(['fullName','emailText','birthDate','createdAt','profileCompleted','phone','profileAnswers','updatedAt'])
+        && shortText(d.fullName, 200) && shortText(d.emailText, 320)
+        && (d.birthDate == null || shortText(d.birthDate, 40))
+        && shortText(d.createdAt, 40) && d.profileCompleted is bool
+        && (!('phone' in d) || nullableText(d.phone, 40))
+        && (!('profileAnswers' in d) || (d.profileAnswers is map && d.profileAnswers.size() <= 100))
+        && (!('updatedAt' in d) || shortText(d.updatedAt, 40));
+    }
+    match /users/{uid} {
+      allow read: if own(uid);
+      allow create: if own(uid) && validProfile(request.resource.data)
+        && request.resource.data.emailText == request.auth.token.email
+        && request.resource.data.profileCompleted == false;
+      allow update: if own(uid) && validProfile(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fullName','phone','profileAnswers','profileCompleted','updatedAt']);
+      allow delete: if false;
+      match /reservations/{id} {
+        allow read: if own(uid);
+        allow create: if own(uid)
+          && request.resource.data.keys().hasAll(['activityId','createdAt'])
+          && request.resource.data.keys().hasOnly(['activityId','createdAt'])
+          && request.resource.data.activityId == id
+          && request.resource.data.createdAt == request.time
+          && getAfter(activityPath(id)).data.status == 'open'
+          && getAfter(activityPath(id)).data.startsAt > request.time
+          && ((exists(activityPath(id))
+              && getAfter(activityPath(id)).data.participantCount == get(activityPath(id)).data.participantCount + 1)
+            || (admin() && !exists(activityPath(id)) && getAfter(activityPath(id)).data.participantCount == 1));
+        allow delete: if own(uid) && get(activityPath(id)).data.startsAt > request.time
+          && getAfter(activityPath(id)).data.participantCount == get(activityPath(id)).data.participantCount - 1;
+        allow update: if false;
+      }
+    }
+    match /formularioPerfil/{id} {
+      allow read: if signedIn();
+      allow write: if admin();
+    }
+    function validPlan(d) {
+      return d.keys().hasAll(['schemaVersion','ally','title','description','imageUrl','category','city','address','startsAt','endsAt','publishFrom','publishUntil','externalUrl','sponsored','status','createdAt','updatedAt'])
+        && d.keys().hasOnly(['schemaVersion','ally','title','description','imageUrl','category','city','address','startsAt','endsAt','publishFrom','publishUntil','externalUrl','sponsored','status','createdAt','updatedAt'])
+        && d.schemaVersion == 1 && shortText(d.ally, 160) && shortText(d.title, 160)
+        && d.description is string && d.description.size() <= 4000
+        && (d.imageUrl == null || https(d.imageUrl))
+        && d.category in ['museum','cafe','theatre','restaurant','bar','other']
+        && pilotCity(d.city) && shortText(d.address, 500) && https(d.externalUrl)
+        && d.startsAt is timestamp && d.endsAt is timestamp && d.endsAt > d.startsAt
+        && d.publishFrom is timestamp && d.publishUntil is timestamp && d.publishUntil > d.publishFrom
+        && d.sponsored is bool && d.status in ['draft','published','withdrawn']
+        && d.createdAt is timestamp && d.updatedAt is timestamp;
+    }
+    match /partnerPlans/{id} {
+      // Published history is not confidential. Temporal feed visibility is
+      // a product filter; private drafts/withdrawn plans remain admin only.
+      allow read: if admin() || (signedIn() && resource.data.status == 'published');
+      allow create: if admin() && validPlan(request.resource.data)
+        && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
+      allow update: if admin() && validPlan(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt && request.resource.data.updatedAt == request.time;
+      allow delete: if admin();
+    }
+    // Explicitly deny legacy collections, unknown documents and subcollections.
+    match /{document=**} { allow read, write: if false; }
+  }
+}
