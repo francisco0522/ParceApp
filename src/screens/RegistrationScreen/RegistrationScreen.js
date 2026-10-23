@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useRef, useState} from 'react';
 import {
   Image,
   Text,
@@ -12,12 +12,9 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 
 import styles from './styles';
-import {getAuth, createUserWithEmailAndPassword} from 'firebase/auth';
-import {firebaseApp} from '../../firebase/config';
-import {getFirestore, collection, setDoc, doc} from 'firebase/firestore';
+import {register, resetToSession, sessionError} from '../../services/session';
 import {useDispatch} from 'react-redux';
-import {setId, setName, setEmail, setBirthDate} from '../../slices/userSlice';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {setUser} from '../../slices/userSlice';
 import DatePicker from 'react-native-date-picker';
 import moment from 'moment';
 import Logo from '../../../assets/logo.png';
@@ -26,7 +23,23 @@ import {Dropdown} from 'react-native-element-dropdown';
 
 moment.locale('es');
 
+// Validación de complejidad de contraseña (OWASP M3)
+const validatePassword = pwd => {
+  if (pwd.length < 8) {
+    return 'La contraseña debe tener al menos 8 caracteres';
+  }
+  if (!/[0-9]/.test(pwd)) {
+    return 'La contraseña debe contener al menos un número';
+  }
+  if (!/[a-zA-Z]/.test(pwd)) {
+    return 'La contraseña debe contener al menos una letra';
+  }
+  return null;
+};
+
 export default function RegistrationScreen({navigation}) {
+  const pending = useRef(false);
+  const [submitting, setSubmitting] = useState(false);
   const [fullName, setFullName] = useState('');
   const [emailText, setEmailText] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +48,6 @@ export default function RegistrationScreen({navigation}) {
   const [showScanner, setShowScanner] = useState(false);
   const [genero, setGenero] = useState('');
   const [verificado, setVerificado] = useState(false);
-  const [cedula, setCedula] = useState('');
   const [isFocus, setIsFocus] = useState(false);
 
   const generos = [
@@ -64,7 +76,7 @@ export default function RegistrationScreen({navigation}) {
             setGenero(data.gender);
             setBirthDateInfo(date);
             setVerificado(true);
-            setCedula(data.idNumber);
+            // No guardamos el idNumber (número de cédula) — minimización de datos (OWASP M6)
             setShowScanner(false);
           }}
           onClose={() => setShowScanner(false)}
@@ -85,39 +97,48 @@ export default function RegistrationScreen({navigation}) {
 
   /* ---------------- REGISTER ---------------- */
   const onRegisterPress = async () => {
-    if (!fullName || !emailText || !password || !birthDate) {
+    if (pending.current) {
+      return;
+    }
+    if (!fullName.trim() || !emailText.trim() || !password || !birthDate) {
       Alert.alert('Error', 'Completa todos los campos');
       return;
     }
-    try {
-      const auth = getAuth(firebaseApp);
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        emailText,
-        password,
+
+    // Validar complejidad de contraseña (OWASP M3)
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      Alert.alert('Contraseña insegura', passwordError);
+      return;
+    }
+
+    if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailText.trim()) ||
+      Number.isNaN(birthDate.getTime()) ||
+      birthDate > minAdultDate
+    ) {
+      Alert.alert(
+        'Error',
+        'Ingresa un correo válido y confirma que eres mayor de edad',
       );
-      const uid = userCredential.user.uid;
-      const db = getFirestore(firebaseApp);
-      await setDoc(doc(db, 'users', uid), {
+      return;
+    }
+    pending.current = true;
+    setSubmitting(true);
+    try {
+      const profile = await register({
         fullName,
-        emailText,
+        email: emailText,
+        password,
         birthDate,
-        createdAt: new Date(),
-        profileCompleted: false,
       });
-      dispatch(setId(uid));
-      dispatch(setName(fullName));
-      dispatch(setEmail(emailText));
-      dispatch(setBirthDate(birthDate));
-      await AsyncStorage.multiSet([
-        ['id', uid],
-        ['fullName', fullName],
-        ['email', emailText],
-        ['userStatus', 'Login'],
-      ]);
-      navigation.replace('ProfileCreationScreen');
+      dispatch(setUser(profile));
+      resetToSession(navigation, profile);
     } catch (error) {
-      Alert.alert('Error', 'No se pudo crear la cuenta');
+      Alert.alert('Error', sessionError(error));
+    } finally {
+      pending.current = false;
+      setSubmitting(false);
     }
   };
 
@@ -142,6 +163,7 @@ export default function RegistrationScreen({navigation}) {
             value={emailText}
             onChangeText={setEmailText}
             autoCapitalize="none"
+            keyboardType="email-address"
           />
 
           <Text style={styles.label}>Contraseña</Text>
@@ -151,6 +173,15 @@ export default function RegistrationScreen({navigation}) {
             value={password}
             onChangeText={setPassword}
           />
+          <Text
+            style={{
+              fontSize: 12,
+              color: '#888',
+              marginBottom: 8,
+              marginTop: -4,
+            }}>
+            Mínimo 8 caracteres, una letra y un número.
+          </Text>
 
           <Text style={styles.label}>Fecha de nacimiento</Text>
           <TouchableOpacity
@@ -209,9 +240,9 @@ export default function RegistrationScreen({navigation}) {
               style={{
                 textAlign: 'center',
                 fontWeight: '600',
-                color: '#E5E5EA',
+                color: verificado ? '#1A7F37' : '#E5E5EA',
               }}>
-              Verifica tu identidad
+              {verificado ? '✓ Identidad verificada' : 'Verifica tu identidad'}
             </Text>
           </TouchableOpacity>
 
@@ -229,8 +260,13 @@ export default function RegistrationScreen({navigation}) {
             nunca serán visibles para otros usuarios.
           </Text>
 
-          <TouchableOpacity style={styles.button} onPress={onRegisterPress}>
-            <Text style={styles.buttonText}>Crear cuenta</Text>
+          <TouchableOpacity
+            style={styles.button}
+            disabled={submitting}
+            onPress={onRegisterPress}>
+            <Text style={styles.buttonText}>
+              {submitting ? 'Creando cuenta…' : 'Crear cuenta'}
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
