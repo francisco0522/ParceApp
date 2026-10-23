@@ -82,6 +82,9 @@ yarn-error.log
 # Local orchestration tool caches
 .cache/
 
+# Working documentation stays local
+/docs/
+
 # Firebase and build credentials (history remediation)
 .env
 .env.*
