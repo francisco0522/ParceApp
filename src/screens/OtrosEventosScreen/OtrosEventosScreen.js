@@ -1,644 +1,431 @@
-import React, {useState, useEffect} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
-  TouchableOpacity,
-  Text,
-  Image,
-  View,
-  Modal,
-  TextInput,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
+  Platform,
   ScrollView,
-  Alert,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import moment from 'moment';
-import 'moment/locale/es';
-
+import DatePicker from 'react-native-date-picker';
+import {useDispatch, useSelector} from 'react-redux';
 import Footer from '../Footer/Footer';
 import styles from './styles';
 import {
-  getFirestore,
-  collection,
-  doc,
-  runTransaction,
-  Timestamp,
-  query,
-  where,
-  getDocs,
-} from 'firebase/firestore';
-
-import {useDispatch, useSelector} from 'react-redux';
+  createEvent,
+  isActivityAdministrator,
+  reserveActivity,
+} from '../../services/activities';
+import {
+  activityError,
+  formatActivityDate,
+  PILOT_CITIES,
+  selectedStartsAt,
+} from '../../models/activity';
 import {fetchEventos} from '../../thunks/eventosThunks';
-import {firebaseApp} from '../../firebase/config';
-import DatePicker from 'react-native-date-picker';
-
-moment.locale('es');
 
 const OtrosEventosScreen = ({navigation}) => {
   const dispatch = useDispatch();
-  const {list, loading} = useSelector(state => state.eventos);
-
-  const fullName = useSelector(state => state.user.name);
-  const userId = useSelector(state => state.user.id);
- 
-  /* ---------------- ESTADOS ---------------- */
-
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [selectedEvents, setSelectedEvents] = useState([]);
-  const [eventModal, setEventModal] = useState(null);
+  const {list, loading, error: loadError} = useSelector(state => state.eventos);
+  const uid = useSelector(state => state.user.id);
+  const name = useSelector(state => state.user.name);
+  const [admin, setAdmin] = useState(false);
+  const [roleError, setRoleError] = useState(null);
+  const [city, setCity] = useState(null);
+  const [selected, setSelected] = useState([]);
+  const [results, setResults] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const pending = useRef(false);
+  const alive = useRef(true);
+  const currentUid = useRef(uid);
+  currentUid.current = uid;
   const [createModal, setCreateModal] = useState(false);
-  const [newEventTitle, setNewEventTitle] = useState(null);
-  const [newEventDate, setNewEventDate] = useState(new Date());
-  const [newEventHour, setNewEventHour] = useState(new Date());
-  const [newEventDescription, setNewEventDescription] = useState(null);
-  const [newEventDirection, setNewEventDirection] = useState(null);
-  const [newEventCapacity, setNewEventCapacity] = useState(null);
-  const [openNewEventDate, setOpenNewEventDate] = useState(false);
-  const [openNewEventHour, setOpenNewEventHour] = useState(false);
-
+  const [title, setTitle] = useState('');
+  const [direction, setDirection] = useState('');
+  const [description, setDescription] = useState('');
+  const [capacity, setCapacity] = useState('');
+  const [newCity, setNewCity] = useState(null);
+  const [date, setDate] = useState(new Date());
+  const [hour, setHour] = useState(new Date());
+  const [openDate, setOpenDate] = useState(false);
+  const [openHour, setOpenHour] = useState(false);
   useEffect(() => {
-    if (!list.length) {
-      dispatch(fetchEventos());
-    } else {
-      console.log(list);
-    }
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
   }, []);
-
-  if (loading) {
-    return (
-      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-        <Text style={{color: '#fff'}}>Cargando...</Text>
-      </View>
-    );
-  }
-
-  /* ---------------- EVENTOS ---------------- */
-
-  const crearEvento = async () => {
-    try {
-      if (!userId || !fullName) {
-        Alert.alert('Error', 'Usuario no válido');
-        return;
-      }
-
-      if (
-        !newEventTitle ||
-        !newEventDate ||
-        !newEventHour ||
-        !newEventDirection
-      ) {
-        Alert.alert('Error', 'Completa todos los campos obligatorios');
-        return;
-      }
-
-      const db = getFirestore(firebaseApp);
-
-      // 🔑 CLAVE ÚNICA DEL EVENTO
-      const normalize = text =>
-        text
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/\s+/g, '')
-          .toLowerCase();
-
-      const eventKey = `${normalize(newEventTitle)}_${moment(
-        newEventDate,
-      ).format('YYYY-MM-DD')}_${moment(newEventHour).format(
-        'HH:mm',
-      )}_${normalize(newEventDirection)}`;
-
-      // 📌 usar eventKey como ID
-      const eventoRef = doc(db, 'eventos', eventKey);
-
-      const userData = {
-        id: userId,
-        fullName,
-      };
-
-      await runTransaction(db, async transaction => {
-        const snap = await transaction.get(eventoRef);
-
-        // ⛔ EVENTO DUPLICADO
-        if (snap.exists()) {
-          throw new Error('DUPLICATE');
+  useEffect(() => {
+    let active = true;
+    setAdmin(false);
+    setRoleError(null);
+    setSelected([]);
+    setResults([]);
+    dispatch(fetchEventos());
+    isActivityAdministrator()
+      .then(value => {
+        if (active) {
+          setAdmin(value);
         }
-
-        // ✅ CREAR EVENTO
-        transaction.set(eventoRef, {
-          title: newEventTitle.trim(),
-          date: Timestamp.fromDate(newEventDate),
-          hour: Timestamp.fromDate(newEventHour),
-          direction: newEventDirection.trim(),
-          description: newEventDescription || '',
-          capacity: Number(newEventCapacity) || 0,
-          users: [userData], // creador ya queda inscrito
-          createdBy: userData,
-          eventKey,
-          createdAt: Timestamp.now(),
-        });
+      })
+      .catch(() => {
+        if (active) {
+          setRoleError('No pudimos comprobar permisos administrativos.');
+        }
       });
-
-      Alert.alert('Evento creado', 'Evento creado con éxito');
-      dispatch(fetchEventos());
-      setCreateModal(false);
-    } catch (error) {
-      if (error.message === 'DUPLICATE') {
-        Alert.alert(
-          'Evento duplicado',
-          'Ya existe un evento con el mismo título, fecha, hora y dirección',
-        );
-      } else {
-        console.error(error);
-        Alert.alert('Error', 'No se pudo crear el evento');
+    return () => {
+      active = false;
+    };
+  }, [dispatch, uid]);
+  useEffect(
+    () => navigation.addListener?.('focus', () => dispatch(fetchEventos())),
+    [navigation, dispatch],
+  );
+  const create = async () => {
+    if (pending.current) {
+      return;
+    }
+    if (!newCity || !title.trim() || !direction.trim()) {
+      Alert.alert('Revisa el evento', 'Completa título, ciudad y dirección.');
+      return;
+    }
+    const places =
+      capacity.trim() === '' || Number(capacity) === 0
+        ? null
+        : Number(capacity);
+    if (
+      places !== null &&
+      (!Number.isInteger(places) || places < 1 || places > 10000)
+    ) {
+      Alert.alert(
+        'Revisa los cupos',
+        'Usa un entero de 1 a 10000; vacío o 0 significa sin límite.',
+      );
+      return;
+    }
+    const sessionUid = uid;
+    pending.current = true;
+    setBusy(true);
+    try {
+      await createEvent(uid, {
+        title,
+        direction,
+        description,
+        capacity: places,
+        city: newCity,
+        startsAt: selectedStartsAt(date, hour, newCity),
+      });
+      if (alive.current && currentUid.current === sessionUid) {
+        Alert.alert('Evento creado', 'Tu reserva también quedó registrada.');
+        setCreateModal(false);
+        setTitle('');
+        setDirection('');
+        setDescription('');
+        setCapacity('');
+        setNewCity(null);
+        dispatch(fetchEventos());
+      }
+    } catch (failure) {
+      if (alive.current && currentUid.current === sessionUid) {
+        Alert.alert('Evento no creado', activityError(failure));
+      }
+    } finally {
+      pending.current = false;
+      if (alive.current) {
+        setBusy(false);
       }
     }
   };
-
-  const reservarEvento = async () => {
-    try {
-      if (!userId || !fullName) {
-        Alert.alert('Error', 'Usuario no válido');
-        return;
+  const reserve = async () => {
+    if (pending.current || !selected.length) {
+      return;
+    }
+    const sessionUid = uid;
+    const requested = [...selected];
+    pending.current = true;
+    setBusy(true);
+    const outcomes = [];
+    for (const id of requested) {
+      if (!alive.current || currentUid.current !== sessionUid) {
+        break;
       }
-
-      if (!selectedEvents.length) {
-        Alert.alert('Error', 'No hay eventos seleccionados');
-        return;
-      }
-
-      const db = getFirestore(firebaseApp);
-      const userRef = doc(db, 'users', userId);
-
-      for (const eventId of selectedEvents) {
-        const eventoRef = doc(db, 'eventos', eventId);
-
-        await runTransaction(db, async transaction => {
-          const eventoSnap = await transaction.get(eventoRef);
-          const userSnap = await transaction.get(userRef);
-
-          if (!eventoSnap.exists()) {
-            throw new Error('EVENT_NOT_FOUND');
-          }
-
-          if (!userSnap.exists()) {
-            throw new Error('USER_NOT_FOUND');
-          }
-
-          const evento = eventoSnap.data();
-          const users = evento.users || [];
-
-          // ⛔ ya inscrito
-          if (users.some(u => u.uid === userId)) {
-            throw new Error('ALREADY_REGISTERED');
-          }
-
-          // ⛔ capacidad llena
-          if (evento.capacity && users.length >= evento.capacity) {
-            throw new Error('EVENT_FULL');
-          }
-
-          const userData = {
-            uid: userId,
-            fullName,
-          };
-
-          /* ---------- ACTUALIZAR EVENTO ---------- */
-          transaction.update(eventoRef, {
-            users: [...users, userData],
-          });
-
-          /* ---------- ACTUALIZAR USUARIO ---------- */
-          const reservas = userSnap.data().reservas || [];
-
-          if (!reservas.some(r => r.eventId === eventId)) {
-            transaction.update(userRef, {
-              reservas: [
-                ...reservas,
-                {
-                  eventId,
-                  title: evento.title,
-                  date: evento.date,
-                  reservedAt: Timestamp.now(),
-                },
-              ],
-            });
-          }
+      try {
+        await reserveActivity(sessionUid, id);
+        outcomes.push({id, ok: true, message: 'Reserva confirmada'});
+      } catch (failure) {
+        // An existing membership is an achieved outcome, not a retry target.
+        outcomes.push({
+          id,
+          ok: failure.message === 'ALREADY_REGISTERED',
+          message: activityError(failure),
         });
       }
-
-      Alert.alert('Reserva exitosa', 'Te uniste a los eventos');
-      setSelectedEvents([]);
+    }
+    pending.current = false;
+    if (alive.current) {
+      setBusy(false);
+    }
+    if (alive.current && currentUid.current === sessionUid) {
+      setResults(outcomes);
+      setSelected(
+        outcomes.filter(result => !result.ok).map(result => result.id),
+      );
+      setBusy(false);
       dispatch(fetchEventos());
-    } catch (error) {
-      console.error(error);
-
-      const map = {
-        USER_NOT_FOUND: 'Usuario no encontrado',
-        EVENT_NOT_FOUND: 'Evento no encontrado',
-        EVENT_FULL: 'Evento lleno',
-        ALREADY_REGISTERED: 'Ya estás inscrito',
-      };
-
-      Alert.alert('Error', map[error.message] || 'Error inesperado');
+      const confirmed = outcomes.filter(result => result.ok).length;
+      Alert.alert(
+        'Resultado de reservas',
+        `${confirmed} confirmadas o ya reservadas; ${outcomes.length - confirmed} no realizadas. Reintentar procesa únicamente las pendientes.`,
+      );
     }
   };
-
-  /* ---------------- UTIL ---------------- */
-
-  const capitalize = text => text.charAt(0).toUpperCase() + text.slice(1);
-
-  /* ---------------- SEMICALENDARIO ---------------- */
-
-  const weekDays = Array.from({length: 7}).map((_, index) =>
-    moment().add(index, 'day'),
-  );
-
-  const onSelectDay = day => {
-    if (selectedDate && day.isSame(selectedDate, 'day')) {
-      setSelectedDate(null);
-      setNewEventDate(new Date());
-    } else {
-      setNewEventDate(new Date(day));
-      setSelectedDate(day);
-    }
-  };
-
-  /* ---------------- EVENTOS ORDENADOS ---------------- */
-
-  const eventosOrdenados = [...list].sort((a, b) =>
-    moment(a.date?.toDate?.() || a.date).diff(
-      moment(b.date?.toDate?.() || b.date),
-    ),
-  );
-
-  const eventosFinales = selectedDate
-    ? eventosOrdenados.filter(e => moment(e.date).isSame(selectedDate, 'day'))
-    : eventosOrdenados;
-
-  /* ---------------- SELECT EVENTO ---------------- */
-
-  const toggleEvent = id => {
-    setSelectedEvents(prev =>
-      prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id],
-    );
-  };
-
-  /* ---------------- RENDER EVENTO ---------------- */
-
-  const renderEvento = ({item}) => {
-    const isSelected = selectedEvents.includes(item.id);
-
-    return (
-      <TouchableOpacity
-        style={isSelected ? styles.cardSelected : styles.card}
-        onPress={() => toggleEvent(item.id)}
-        onLongPress={() => setEventModal(item)}>
-        <TouchableOpacity
-          style={{position: 'absolute', right: 10, top: 10}}
-          onPress={() => setEventModal(item)}>
-          <Image
-            style={{
-              height: 15,
-              width: 15,
-            }}
-            source={require('/Users/wolfcore/Documents/ParceApp/assets/informacion.png')}
-          />
-        </TouchableOpacity>
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            width: '100%',
-            alignItems: 'center',
-          }}>
-          <View
-            style={{
-              flexDirection: 'column',
-            }}>
-            <Text style={styles.cardDateText}>{item.title}</Text>
-            <Text style={styles.cardTimeText}>
-              {capitalize(moment(item.date).format('dddd'))},{' '}
-              {moment(item.date).format('D')} de{' '}
-              {capitalize(moment(item.date).format('MMMM'))}
-            </Text>
-            <Text style={styles.cardTimeText}>
-              {moment(item.hour?.toDate?.() || item.hour).format('hh:mm A')}
-            </Text>
-          </View>
-          {isSelected && (
-            <Image
-              style={{
-                height: 35,
-                width: 35,
-              }}
-              source={require('/Users/wolfcore/Documents/ParceApp/assets/controlar.png')}
-            />
-          )}
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  /* ---------------- CARD CREAR EVENTO ---------------- */
-
-  const renderCreateCard = () => (
-    <TouchableOpacity
-      style={[styles.cardNuevoEvento, {borderStyle: 'dashed', borderWidth: 2}]}
-      onPress={() => setCreateModal(true)}>
-      <Image
-        style={{
-          height: 20,
-          width: 20,
-          marginRight: 15,
-        }}
-        source={require('/Users/wolfcore/Documents/ParceApp/assets/anadir-invert.png')}
-      />
-      <Text style={styles.titleNuevoEvento}>Crear nuevo evento</Text>
-    </TouchableOpacity>
-  );
-
+  const events = list
+    .filter(
+      item =>
+        item.status === 'open' &&
+        new Date(item.startsAt).getTime() > Date.now() &&
+        (!city || item.city === city),
+    )
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   return (
-    <SafeAreaView style={{flex: 1, backgroundColor: '#2b2b2bff'}}>
+    <SafeAreaView style={{flex: 1, backgroundColor: '#2b2b2b'}}>
       <View style={styles.container}>
-        {/* HEADER */}
-        <View style={styles.header}>
-          <Text style={styles.titleText}>Hola {fullName}</Text>
+        <Text style={styles.titleText}>Hola {name}</Text>
+        <Text style={styles.subtitleText}>Reserva tu próximo evento</Text>
+        <View style={{flexDirection: 'row'}}>
+          {[
+            ['all', 'Todas'],
+            ...Object.entries(PILOT_CITIES).map(([id, info]) => [
+              id,
+              info.name,
+            ]),
+          ].map(([id, label]) => (
+            <TouchableOpacity
+              key={id}
+              disabled={busy}
+              onPress={() => {
+                setCity(id === 'all' ? null : id);
+              }}
+              style={styles.card}>
+              <Text style={styles.cardTimeText}>
+                {label}
+                {(city || 'all') === id ? ' ✓' : ''}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
-
-        <Text style={styles.subtitleText}>¡Reserva tu próximo evento!</Text>
-
-        {/* ---------- SEMICALENDARIO ---------- */}
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            marginBottom: 10,
-          }}>
-          {weekDays.map(day => {
-            const isSelected = selectedDate && day.isSame(selectedDate, 'day');
-
-            return (
-              <TouchableOpacity
-                key={day.format('YYYY-MM-DD')}
-                onPress={() => onSelectDay(day)}
-                style={{
-                  alignItems: 'center',
-                  padding: 10,
-                  borderRadius: 10,
-                  backgroundColor: isSelected
-                    ? 'rgba(255,255,255,0.15)'
-                    : 'transparent',
-                }}>
-                <Text style={{color: isSelected ? '#fff' : '#aaa'}}>
-                  {capitalize(day.format('dd'))}
-                </Text>
-                <Text
-                  style={{
-                    color: isSelected ? '#fff' : '#aaa',
-                    fontSize: 16,
-                  }}>
-                  {day.format('D')}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* ---------- LISTA ---------- */}
+        {roleError && <Text style={styles.cardTimeText}>{roleError}</Text>}
+        {admin && (
+          <TouchableOpacity
+            style={styles.cardNuevoEvento}
+            disabled={busy}
+            onPress={() => setCreateModal(true)}>
+            <Text style={styles.titleNuevoEvento}>Crear nuevo evento</Text>
+          </TouchableOpacity>
+        )}
+        {loadError && (
+          <TouchableOpacity onPress={() => dispatch(fetchEventos())}>
+            <Text style={styles.cardTimeText}>{loadError} Reintentar</Text>
+          </TouchableOpacity>
+        )}
+        {loading && <Text style={styles.cardTimeText}>Cargando eventos…</Text>}
         <FlatList
-          data={[{id: 'create'}, ...eventosFinales]}
+          data={events}
           keyExtractor={item => item.id}
-          renderItem={({item}) =>
-            item.id === 'create' ? renderCreateCard() : renderEvento({item})
+          ListEmptyComponent={
+            !loading && !loadError ? (
+              <Text style={styles.cardTimeText}>
+                No hay eventos próximos disponibles.
+              </Text>
+            ) : null
           }
-          style={{height: selectedEvents.length > 0 ? '55%' : '65%'}}
+          renderItem={({item}) => {
+            const full =
+              item.capacity !== null && item.participantCount >= item.capacity;
+            return (
+              <View
+                style={
+                  selected.includes(item.id) ? styles.cardSelected : styles.card
+                }>
+                <TouchableOpacity
+                  disabled={busy || full}
+                  onPress={() =>
+                    setSelected(previous =>
+                      previous.includes(item.id)
+                        ? previous.filter(id => id !== item.id)
+                        : [...previous, item.id],
+                    )
+                  }>
+                  <Text style={styles.cardDateText}>
+                    {item.title}
+                    {selected.includes(item.id) ? ' ✓' : ''}
+                  </Text>
+                  <Text style={styles.cardTimeText}>
+                    {PILOT_CITIES[item.city]?.name} · {formatActivityDate(item)}
+                  </Text>
+                  <Text style={styles.cardTimeText}>{item.direction}</Text>
+                  <Text style={styles.cardTimeText}>
+                    {item.participantCount}/{item.capacity ?? 'Sin límite'} ·{' '}
+                    {full ? 'Sin cupos' : 'Abierto'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() =>
+                    navigation.navigate('ActivityDetailScreen', {
+                      activityId: item.id,
+                    })
+                  }>
+                  <Text style={styles.cardTimeText}>Ver detalles</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          }}
         />
-
-        {/* ---------- BOTÓN RESERVAR ---------- */}
-        {selectedEvents.length > 0 && (
+        {results.map(result => (
+          <Text key={result.id} style={styles.cardTimeText}>
+            {list.find(item => item.id === result.id)?.title || result.id}:{' '}
+            {result.message}
+          </Text>
+        ))}
+        {selected.length > 0 && (
           <TouchableOpacity
             style={styles.confirmButton}
-            onPress={() => reservarEvento()}>
+            disabled={busy}
+            onPress={reserve}>
             <Text style={styles.confirmButtonText}>
-              Reservar ({selectedEvents.length})
+              {busy
+                ? 'Reservando…'
+                : `${results.length ? 'Reintentar pendientes' : 'Reservar'} (${selected.length})`}
             </Text>
           </TouchableOpacity>
         )}
       </View>
-
       <Footer navigation={navigation} />
-
-      {/* ---------- MODAL INFO EVENTO ---------- */}
-
-      {eventModal && (
-        <Modal transparent animationType="slide">
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => setEventModal(null)}
-            style={{
-              flex: 1,
-              backgroundColor: 'rgba(0,0,0,0.5)',
-            }}>
-            <View
-              style={{
-                backgroundColor: '#fff',
-                borderTopLeftRadius: 20,
-                borderTopRightRadius: 20,
-                padding: 20,
-                marginTop: 'auto',
-              }}>
-              <View
-                style={{
-                  width: 40,
-                  height: 5,
-                  backgroundColor: '#ccc',
-                  borderRadius: 5,
-                  alignSelf: 'center',
-                  marginBottom: 10,
-                }}
-              />
-
-              <Text style={{fontSize: 20, fontWeight: 'bold'}}>
-                {eventModal.title}
-              </Text>
-
-              <Text style={{marginTop: 5, color: '#555'}}>
-                {capitalize(moment(eventModal.date).format('dddd'))},{' '}
-                {moment(eventModal.date).format('D')} de{' '}
-                {capitalize(moment(eventModal.date).format('MMMM'))}
-              </Text>
-
-              <Text style={{marginTop: 5, color: '#555'}}>
-                {moment(eventModal.hour).format('HH:MM A')}
-              </Text>
-
-              <Text style={{marginTop: 15, color: '#333'}}>
-                {eventModal.description}
-              </Text>
-
-              <TouchableOpacity
-                style={{
-                  backgroundColor: '#000',
-                  padding: 15,
-                  borderRadius: 25,
-                  marginTop: 20,
-                  alignItems: 'center',
-                }}
-                onPress={() => {
-                  toggleEvent(eventModal.id);
-                  setEventModal(null);
-                }}>
-                <Text style={{color: '#fff', fontWeight: 'bold'}}>
-                  Unirme a este evento
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </Modal>
-      )}
-
-      {/* ---------- MODAL CREAR EVENTO ---------- */}
-      <Modal visible={createModal} transparent animationType="slide">
+      <Modal
+        visible={createModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          if (!busy) {
+            setCreateModal(false);
+          }
+        }}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={{flex: 1}}>
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => setCreateModal(false)}
-            style={{
-              flex: 1,
-              backgroundColor: 'rgba(0,0,0,0.5)',
-            }}>
-            <TouchableOpacity
-              activeOpacity={1}
-              style={{
-                backgroundColor: '#eaeaeaff',
-                marginTop: 'auto',
-                borderTopLeftRadius: 20,
-                borderTopRightRadius: 20,
-                maxHeight: '90%',
-              }}>
-              <ScrollView
-                contentContainerStyle={{padding: 20}}
-                keyboardShouldPersistTaps="handled">
-                {/* CLOSE */}
-                <TouchableOpacity
-                  onPress={() => setCreateModal(false)}
-                  style={{
-                    position: 'absolute',
-                    right: 15,
-                    top: 15,
-                    zIndex: 10,
-                  }}>
-                  <Image
-                    style={{height: 20, width: 20}}
-                    source={require('/Users/wolfcore/Documents/ParceApp/assets/x.png')}
-                  />
-                </TouchableOpacity>
-
-                <Text style={[styles.cardDateText, {marginBottom: 15}]}>
-                  Crear evento
+          style={{
+            flex: 1,
+            justifyContent: 'flex-end',
+            backgroundColor: '#0008',
+          }}>
+          <ScrollView
+            style={{maxHeight: '90%', backgroundColor: '#eee'}}
+            contentContainerStyle={{padding: 20}}
+            keyboardShouldPersistTaps="handled">
+            <Text style={styles.cardTitles}>Crear evento (administración)</Text>
+            <Text style={styles.cardTitles}>Ciudad y zona horaria</Text>
+            {Object.entries(PILOT_CITIES).map(([id, info]) => (
+              <TouchableOpacity
+                key={id}
+                disabled={busy}
+                onPress={() => setNewCity(id)}>
+                <Text style={styles.cardTitles}>
+                  {info.name} (UTC{info.offset}){newCity === id ? ' ✓' : ''}
                 </Text>
-
-                {/* TÍTULO */}
-                <Text style={styles.cardTitles}>Título</Text>
-                <TextInput
-                  placeholder="Título del evento"
-                  style={[styles.cardInputs, {marginBottom: 15}]}
-                  value={newEventTitle}
-                  onChangeText={setNewEventTitle}
-                />
-
-                {/* FECHA */}
-                <Text style={styles.cardTitles}>Fecha</Text>
-                <TouchableOpacity
-                  style={[styles.cardInputs, {marginBottom: 15}]}
-                  onPress={() => setOpenNewEventDate(true)}>
-                  <Text style={styles.cardValues}>
-                    {capitalize(moment(newEventDate).format('MMMM, DD'))}
-                  </Text>
-                </TouchableOpacity>
-
-                <DatePicker
-                  modal
-                  mode="date"
-                  minimumDate={new Date()}
-                  open={openNewEventDate}
-                  date={newEventDate}
-                  onConfirm={date => {
-                    setOpenNewEventDate(false);
-                    setNewEventDate(date);
-                  }}
-                  onCancel={() => setOpenNewEventDate(false)}
-                />
-
-                {/* HORA */}
-                <Text style={styles.cardTitles}>Hora</Text>
-                <TouchableOpacity
-                  style={[styles.cardInputs, {marginBottom: 15}]}
-                  onPress={() => setOpenNewEventHour(true)}>
-                  <Text style={styles.cardValues}>
-                    {moment(newEventHour).format('hh:mm A')}
-                  </Text>
-                </TouchableOpacity>
-
-                <DatePicker
-                  modal
-                  mode="time"
-                  open={openNewEventHour}
-                  date={newEventHour}
-                  onConfirm={hour => {
-                    setOpenNewEventHour(false);
-                    setNewEventHour(hour);
-                  }}
-                  onCancel={() => setOpenNewEventHour(false)}
-                />
-
-                {/* DESCRIPCIÓN */}
-                <Text style={styles.cardTitles}>Descripción</Text>
-                <TextInput
-                  placeholder="¿Una descripción sobre el evento?"
-                  style={[styles.cardInputs, {marginBottom: 15, height: 80}]}
-                  multiline
-                  value={newEventDescription}
-                  onChangeText={setNewEventDescription}
-                />
-
-                {/* DIRECCIÓN */}
-                <Text style={styles.cardTitles}>Dirección</Text>
-                <TextInput
-                  placeholder="¿Dónde será el evento?"
-                  style={[styles.cardInputs, {marginBottom: 15}]}
-                  value={newEventDirection}
-                  onChangeText={setNewEventDirection}
-                />
-
-                {/* CAPACIDAD */}
-                <Text style={styles.cardTitles}>Capacidad</Text>
-                <TextInput
-                  placeholder="Límite de personas"
-                  style={[styles.cardInputs, {marginBottom: 25}]}
-                  keyboardType="numeric"
-                  value={newEventCapacity}
-                  onChangeText={setNewEventCapacity}
-                />
-
-                {/* BOTÓN */}
-                <TouchableOpacity
-                  onPress={() => {
-                    crearEvento();
-                  }}
-                  style={styles.confirmButton}>
-                  <Text style={styles.confirmButtonText}>Crear evento</Text>
-                </TouchableOpacity>
-              </ScrollView>
+              </TouchableOpacity>
+            ))}
+            <TextInput
+              editable={!busy}
+              accessibilityLabel="Título del evento"
+              placeholder="Título del evento"
+              maxLength={160}
+              value={title}
+              onChangeText={setTitle}
+              style={styles.cardInputs}
+            />
+            <TouchableOpacity disabled={busy} onPress={() => setOpenDate(true)}>
+              <Text style={styles.cardTitles}>
+                Fecha: {date.toLocaleDateString()}
+              </Text>
             </TouchableOpacity>
-          </TouchableOpacity>
+            <TouchableOpacity disabled={busy} onPress={() => setOpenHour(true)}>
+              <Text style={styles.cardTitles}>
+                Hora de la ciudad seleccionada: {hour.getHours()}:
+                {String(hour.getMinutes()).padStart(2, '0')}
+              </Text>
+            </TouchableOpacity>
+            <TextInput
+              editable={!busy}
+              accessibilityLabel="Dirección"
+              placeholder="Dirección"
+              maxLength={500}
+              value={direction}
+              onChangeText={setDirection}
+              style={styles.cardInputs}
+            />
+            <TextInput
+              editable={!busy}
+              accessibilityLabel="Descripción"
+              placeholder="Descripción"
+              multiline
+              maxLength={4000}
+              value={description}
+              onChangeText={setDescription}
+              style={styles.cardInputs}
+            />
+            <TextInput
+              editable={!busy}
+              accessibilityLabel="Capacidad"
+              placeholder="Cupos (vacío o 0: sin límite)"
+              keyboardType="numeric"
+              value={capacity}
+              onChangeText={setCapacity}
+              style={styles.cardInputs}
+            />
+            <TouchableOpacity
+              disabled={busy}
+              onPress={create}
+              style={styles.confirmButton}>
+              <Text style={styles.confirmButtonText}>
+                {busy ? 'Creando…' : 'Crear evento'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              disabled={busy}
+              onPress={() => setCreateModal(false)}>
+              <Text style={styles.cardTitles}>Volver</Text>
+            </TouchableOpacity>
+          </ScrollView>
+          <DatePicker
+            modal
+            mode="date"
+            minimumDate={new Date()}
+            open={openDate}
+            date={date}
+            onConfirm={value => {
+              setOpenDate(false);
+              setDate(value);
+            }}
+            onCancel={() => setOpenDate(false)}
+          />
+          <DatePicker
+            modal
+            mode="time"
+            open={openHour}
+            date={hour}
+            onConfirm={value => {
+              setOpenHour(false);
+              setHour(value);
+            }}
+            onCancel={() => setOpenHour(false)}
+          />
         </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
 };
-
 export default OtrosEventosScreen;
