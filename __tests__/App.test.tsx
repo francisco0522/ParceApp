@@ -39,6 +39,18 @@ jest.mock('../src/screens/index.js', () => {
 import {auth} from '../src/firebase/config';
 import {onAuthStateChanged} from 'firebase/auth';
 jest.mock(
+  '../src/screens/ExplorePlansScreen/ExplorePlansScreen',
+  () => () => require('react').createElement('MockProtectedRoute'),
+);
+jest.mock(
+  '../src/screens/PlanDetailScreen/PlanDetailScreen',
+  () => () => require('react').createElement('MockProtectedRoute'),
+);
+jest.mock(
+  '../src/screens/PartnerPlanAdminScreen/PartnerPlanAdminScreen',
+  () => () => require('react').createElement('MockProtectedRoute'),
+);
+jest.mock(
   '../src/screens/ActivityDetailScreen/ActivityDetailScreen',
   () => () => require('react').createElement('MockProtectedRoute'),
 );
@@ -107,6 +119,9 @@ describe('App integrated Redux session guard with mocked navigator', () => {
   });
   test.each([
     'ActivityDetailScreen',
+    'ExplorePlansScreen',
+    'PlanDetailScreen',
+    'PartnerPlanAdminScreen',
   ])('new route %s is protected by exact UID', route => {
     mockRoute = route;
     act(() => tree.update(<App />));
