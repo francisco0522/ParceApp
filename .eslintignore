@@ -1,0 +1,8 @@
+node_modules/
+vendor/
+ios/Pods/
+android/build/
+android/app/build/
+ios/build/
+.cache/
+coverage/
