@@ -38,6 +38,10 @@ jest.mock('../src/screens/index.js', () => {
 });
 import {auth} from '../src/firebase/config';
 import {onAuthStateChanged} from 'firebase/auth';
+jest.mock(
+  '../src/screens/ActivityDetailScreen/ActivityDetailScreen',
+  () => () => require('react').createElement('MockProtectedRoute'),
+);
 import App from '../App';
 describe('App integrated Redux session guard with mocked navigator', () => {
   let tree: renderer.ReactTestRenderer;
@@ -100,5 +104,27 @@ describe('App integrated Redux session guard with mocked navigator', () => {
     const unsubscribe = (onAuthStateChanged as jest.Mock).mock.results[0].value;
     act(() => tree.unmount());
     expect(unsubscribe).toHaveBeenCalledTimes(1);
+  });
+  test.each([
+    'ActivityDetailScreen',
+  ])('new route %s is protected by exact UID', route => {
+    mockRoute = route;
+    act(() => tree.update(<App />));
+    expect(tree.root.findAllByType('MockProtectedRoute' as any)).toHaveLength(
+      0,
+    );
+    expect(mockNavigation.reset).toHaveBeenCalledWith({
+      index: 0,
+      routes: [{name: 'SplashScreen'}],
+    });
+    auth.currentUser = {uid: 'auth-user'};
+    act(() =>
+      tree.root
+        .findByType(Provider)
+        .props.store.dispatch(setUser({id: 'auth-user'})),
+    );
+    expect(tree.root.findAllByType('MockProtectedRoute' as any)).toHaveLength(
+      1,
+    );
   });
 });

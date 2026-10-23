@@ -18,6 +18,7 @@ import {
   OtrosEventosScreen,
   MyAgendaScreen,
 } from './src/screens/index.js';
+import ActivityDetailScreen from './src/screens/ActivityDetailScreen/ActivityDetailScreen';
 import {decode, encode} from 'base-64';
 import rootReducer from './src/app/rooReducer.js';
 import {Provider, useDispatch, useSelector} from 'react-redux';
@@ -61,6 +62,7 @@ function protect(Screen) {
   };
 }
 const protectedScreens = {
+  ActivityDetailScreen: protect(ActivityDetailScreen),
   Footer: protect(Footer),
   HomeScreen: protect(HomeScreen),
   MiercolesCenaScreen: protect(MiercolesCenaScreen),
@@ -80,6 +82,10 @@ export default function App() {
             screenOptions={{
               headerShown: false,
             }}>
+            <Stack.Screen
+              name="ActivityDetailScreen"
+              component={protectedScreens.ActivityDetailScreen}
+            />
             <Stack.Screen name="SplashScreen" component={SplashScreen} />
             <Stack.Screen name="Footer" component={protectedScreens.Footer} />
             <Stack.Screen name="LoginScreen" component={LoginScreen} />
