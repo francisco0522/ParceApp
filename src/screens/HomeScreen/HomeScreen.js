@@ -7,14 +7,26 @@ import {
   Image,
   View,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import Footer from '../Footer/Footer';
 import styles from './styles';
+import usePartnerPlans from '../ExplorePlansScreen/usePartnerPlans';
+import PlanCard from '../ExplorePlansScreen/PlanCard';
+import {isPlanAdministrator} from '../../services/partnerPlans';
+import {planError} from '../../models/partnerPlan';
 import {useSelector} from 'react-redux';
 
 const HomeScreen = ({navigation}) => {
   const name = useSelector(state => state.user.name);
   const id = useSelector(state => state.user.id);
+  const {
+    plans,
+    loading: plansLoading,
+    error: plansError,
+    retry: retryPlans,
+  } = usePartnerPlans(null);
+  const [admin, setAdmin] = useState(false);
   const [userReservation, setUserReservation] = useState(null);
 
   useEffect(() => {
@@ -39,6 +51,21 @@ const HomeScreen = ({navigation}) => {
     } catch (error) {
       setUserReservation(null);
     }
+  }, [id]);
+
+  useEffect(() => {
+    let active = true;
+    setAdmin(false);
+    isPlanAdministrator(id)
+      .then(value => {
+        if (active) {
+          setAdmin(value);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, [id]);
 
   return (
@@ -115,6 +142,51 @@ const HomeScreen = ({navigation}) => {
               <Text style={styles.textButton}>Mi perfil</Text>
             </TouchableOpacity>
           </View>
+        </View>
+        <View style={styles.plansSection}>
+          <Text style={styles.plansTitle}>Explorar planes</Text>
+          <Text style={styles.plansText}>
+            Actividades próximas de nuestros aliados en Cali y Formosa.
+          </Text>
+          {plansLoading && !plans.length ? (
+            <ActivityIndicator />
+          ) : plansError ? (
+            <TouchableOpacity onPress={retryPlans}>
+              <Text style={styles.plansText}>
+                {planError(plansError)} Reintentar
+              </Text>
+            </TouchableOpacity>
+          ) : !plans.length ? (
+            <Text style={styles.plansText}>
+              Pronto encontrarás nuevos planes aquí.
+            </Text>
+          ) : (
+            plans
+              .slice(0, 2)
+              .map(plan => (
+                <PlanCard
+                  key={plan.id}
+                  plan={plan}
+                  onPress={() =>
+                    navigation.navigate('PlanDetailScreen', {planId: plan.id})
+                  }
+                />
+              ))
+          )}
+          <TouchableOpacity
+            style={styles.plansButton}
+            onPress={() => navigation.navigate('ExplorePlansScreen')}>
+            <Text style={styles.plansButtonText}>Ver todos los planes</Text>
+          </TouchableOpacity>
+          {admin && (
+            <TouchableOpacity
+              style={styles.plansButton}
+              onPress={() => navigation.navigate('PartnerPlanAdminScreen')}>
+              <Text style={styles.plansButtonText}>
+                Administrar publicaciones
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
       <Footer navigation={navigation} />

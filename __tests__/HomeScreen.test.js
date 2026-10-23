@@ -11,12 +11,27 @@ jest.mock('../src/services/activities', () => ({
   watchUserActivities: jest.fn(),
 }));
 import {watchUserActivities} from '../src/services/activities';
+jest.mock('../src/screens/ExplorePlansScreen/usePartnerPlans', () => jest.fn());
+jest.mock('../src/services/partnerPlans', () => ({
+  isPlanAdministrator: jest.fn(),
+}));
+import usePartnerPlans from '../src/screens/ExplorePlansScreen/usePartnerPlans';
+import {isPlanAdministrator} from '../src/services/partnerPlans';
+import {partnerPlan} from '../tests/partnerFixtures';
+import PlanCard from '../src/screens/ExplorePlansScreen/PlanCard';
 import HomeScreen from '../src/screens/HomeScreen/HomeScreen';
 
 describe('existing home', () => {
   let tree, navigation;
   beforeEach(() => {
     jest.clearAllMocks();
+    usePartnerPlans.mockReturnValue({
+      plans: [],
+      loading: false,
+      error: null,
+      retry: jest.fn(),
+    });
+    isPlanAdministrator.mockResolvedValue(false);
     navigation = {navigate: jest.fn()};
     watchUserActivities.mockImplementation((uid, callback) => {
       callback([]);
@@ -80,5 +95,51 @@ describe('existing home', () => {
     });
     await render();
     expect(button('Reservar cena')).toBeDefined();
+  });
+  test('home previews only first two partner plans with detail and list destinations', async () => {
+    usePartnerPlans.mockReturnValue({
+      plans: [
+        partnerPlan(),
+        partnerPlan({id: 'two'}),
+        partnerPlan({id: 'three'}),
+      ],
+      loading: false,
+      error: null,
+      retry: jest.fn(),
+    });
+    await render();
+    expect(tree.root.findAllByType(PlanCard)).toHaveLength(2);
+    act(() => tree.root.findAllByType(PlanCard)[0].props.onPress());
+    expect(navigation.navigate).toHaveBeenCalledWith('PlanDetailScreen', {
+      planId: 'plan-1',
+    });
+    act(() => button('Ver todos los planes').props.onPress());
+    expect(navigation.navigate).toHaveBeenCalledWith('ExplorePlansScreen');
+  });
+  test('admin publication action is visible only after verified claim', async () => {
+    isPlanAdministrator.mockResolvedValue(true);
+    await render();
+    act(() => button('Administrar publicaciones').props.onPress());
+    expect(navigation.navigate).toHaveBeenCalledWith('PartnerPlanAdminScreen');
+  });
+  test('home feed error exposes retry callback', async () => {
+    const retry = jest.fn();
+    usePartnerPlans.mockReturnValue({
+      plans: [],
+      loading: false,
+      error: new Error('offline'),
+      retry,
+    });
+    await render();
+    const target = tree.root
+      .findAllByType(TouchableOpacity)
+      .find(
+        node =>
+          node.findAll(child =>
+            String(child.props.children).includes('Reintentar'),
+          ).length,
+      );
+    act(() => target.props.onPress());
+    expect(retry).toHaveBeenCalledTimes(1);
   });
 });

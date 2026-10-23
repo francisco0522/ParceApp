@@ -18,6 +18,9 @@ import {
   OtrosEventosScreen,
   MyAgendaScreen,
 } from './src/screens/index.js';
+import ExplorePlansScreen from './src/screens/ExplorePlansScreen/ExplorePlansScreen';
+import PlanDetailScreen from './src/screens/PlanDetailScreen/PlanDetailScreen';
+import PartnerPlanAdminScreen from './src/screens/PartnerPlanAdminScreen/PartnerPlanAdminScreen';
 import ActivityDetailScreen from './src/screens/ActivityDetailScreen/ActivityDetailScreen';
 import {decode, encode} from 'base-64';
 import rootReducer from './src/app/rooReducer.js';
@@ -62,6 +65,9 @@ function protect(Screen) {
   };
 }
 const protectedScreens = {
+  ExplorePlansScreen: protect(ExplorePlansScreen),
+  PlanDetailScreen: protect(PlanDetailScreen),
+  PartnerPlanAdminScreen: protect(PartnerPlanAdminScreen),
   ActivityDetailScreen: protect(ActivityDetailScreen),
   Footer: protect(Footer),
   HomeScreen: protect(HomeScreen),
@@ -82,6 +88,18 @@ export default function App() {
             screenOptions={{
               headerShown: false,
             }}>
+            <Stack.Screen
+              name="ExplorePlansScreen"
+              component={protectedScreens.ExplorePlansScreen}
+            />
+            <Stack.Screen
+              name="PlanDetailScreen"
+              component={protectedScreens.PlanDetailScreen}
+            />
+            <Stack.Screen
+              name="PartnerPlanAdminScreen"
+              component={protectedScreens.PartnerPlanAdminScreen}
+            />
             <Stack.Screen
               name="ActivityDetailScreen"
               component={protectedScreens.ActivityDetailScreen}

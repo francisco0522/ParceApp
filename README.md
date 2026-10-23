@@ -1,98 +1,49 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
-
-# Getting Started
-
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
-
-## Step 1: Start Metro
-
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
-
-To start the Metro dev server, run the following command from the root of your React Native project:
-
-```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
-```
-
-## Step 2: Build and run your app
-
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
-
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
-```
-
-### iOS
-
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
-```
-
-Then, and every time you update your native dependencies, run:
-
-```sh
-bundle exec pod install
-```
-
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
-
-```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
-```
-
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
-
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
 # ParceApp
+
+Aplicación React Native para crear un perfil y reservar cenas y eventos. El backlog del MVP está en [docs/MVP_BACKLOG.md](docs/MVP_BACKLOG.md).
+
+## Entorno
+
+- Node.js 20 y npm; instalar dependencias con `npm ci` desde este directorio.
+- Android: JDK 17, Android Studio, SDK Android 35 y un emulador o dispositivo con depuración USB. Configurar `ANDROID_HOME` o un `android/local.properties` local con `sdk.dir`.
+- iOS: macOS, Xcode, herramientas de línea de comandos y CocoaPods. Instalar pods con `cd ios && pod install` después de instalar dependencias JS. Los módulos nativos requieren una compilación nueva después de actualizar dependencias.
+
+## Firebase
+
+Copiar `.env.example` a `.env` y completar la configuración del proyecto Firebase de desarrollo. No versionar `.env`. Habilitar Authentication con correo/contraseña y Firestore. `src/firebase/config.js` lee los valores mediante `react-native-config`; reiniciar y recompilar la app después de cambiarlos.
+
+El perfil se guarda en `users/{uid}` y Authentication es la fuente de sesión. La persistencia usa almacenamiento nativo cifrado. No migrar documentos antiguos automáticamente. Las reglas e índices del entorno deben revisarse antes de probar con datos reales; el repositorio todavía no contiene la política final del MVP.
+
+## Ejecutar
+
+Desde la raíz, abrir una terminal con `npm start`. En otra terminal ejecutar `npm run android` o `npm run ios`. Seleccionar un simulador/dispositivo disponible. Para iOS también puede abrirse `ios/ParceApp.xcworkspace` en Xcode. Android release todavía requiere configuración de firma propia antes de distribuir.
+
+## Validar
+
+- `npm run lint` usa la configuración React Native compatible con ESLint 8.
+- `npm test -- --runInBand --watchman=false` ejecuta Jest y los mocks focalizados de módulos nativos.
+- Para generar bundles independientes: `npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/build/index.android.bundle --assets-dest android/build/assets` (repetir con `ios`, usando un directorio de salida existente).
+
+Las pruebas con mocks y el bundle comprueban JavaScript, no prueban cámara, Keychain/Keystore ni navegación en dispositivos. Validar manualmente en ambas plataformas: registro, sesión restaurada, cuestionario, home, cenas, eventos, agenda, perfil y salida. MVP-04 ya unifica actividades y reservas en `activities`, con membresía por UID. La operación de cenas y eventos y las mejoras de experiencia de reservas se completan en MVP-05 a MVP-07.
+
+### Compatibilidad Xcode y fmt
+
+El `post_install` de `ios/Podfile` compila únicamente el pod `fmt` 11.0.2 con C++17: su detección de `consteval` bajo Apple Clang de Xcode 26.6 provoca un error de expresión constante al compilar `format.cc`. El propio `fmt/base.h` proporciona una rama C++17 sin `consteval`; React Native y Folly conservan C++20. Se aplica con `pod install --project-directory=ios --no-repo-update`, sin modificar fuentes de Pods. Revisar este ajuste al actualizar React Native/fmt/Xcode.
+
+Validación de compilación del 9 de octubre de 2026: pasan los bundles JavaScript Android/iOS, la compilación Debug del simulador iOS (arm64/x86_64) y Android Debug (arm64-v8a). Android resolvió las dependencias que inicialmente faltaban en caché y terminó con `BUILD SUCCESSFUL` en 11 min 5 s, con 391 tareas. Comando utilizado desde `android/`:
+
+```bash
+./gradlew --no-daemon --gradle-user-home ../.cache/gradle --max-workers=2 -PreactNativeArchitectures=arm64-v8a -Dorg.gradle.internal.http.connectionTimeout=15000 -Dorg.gradle.internal.http.socketTimeout=15000 assembleDebug --info
+```
+
+Evidencia en `docs/orchestration/build-android-final.log` y `docs/orchestration/build-ios-fmt17-retry.log`. Estas compilaciones no comprueban apertura de pantallas, cámara ni persistencia cifrada en dispositivos; esas validaciones manuales siguen pendientes.
+
+## Seguridad, firma y pruebas locales
+
+Android release exige una firma propia mediante variables de entorno; ver [docs/SIGNING.md](docs/SIGNING.md). No utiliza la clave debug para distribuir. La evaluación de dependencias y avisos restantes está en [docs/DEPENDENCY_REMEDIATION.md](docs/DEPENDENCY_REMEDIATION.md); no se afirma cero vulnerabilidades.
+
+Para probar reglas sin Firebase real: Node 20, JDK17 y `npm run test:rules` (proyecto ficticio `demo-parceapp`). No ejecutar deploy para estas pruebas. El emulador de Firestore escucha en 8080; Auth local para futuras pruebas nativas en 9099. Los binarios descargados del emulador y logs deben ubicarse en `.cache` o `docs/orchestration/phase2`, dentro del proyecto.
+
+Modo de app local: copiar `.env.emulator.example` a un archivo de entorno de desarrollo privado, seleccionar ese archivo con `ENVFILE` al recompilar y reiniciar la app. Usar únicamente build Debug; la configuración rechaza una combinación demo/flag incorrecta o cambio de proyecto sin reinicio. Android Emulator conecta a `10.0.2.2`; iOS Simulator a `127.0.0.1`. No requiere claves reales. La app no redirige Firebase de producción silenciosamente. La aceptación en dispositivos está aplazada por petición del usuario.
+
+La vitrina de museos, cafés, teatros y otros aliados se opera desde la sección administrativa de publicaciones. Modelo, vigencia, ciudades y pruebas locales en [docs/PARTNER_PLANS.md](docs/PARTNER_PLANS.md). Crear eventos y administrar publicaciones requiere el claim firmado admin; las reglas locales deben validarse y desplegarse por un operador antes del piloto.
