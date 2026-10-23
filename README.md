@@ -1,6 +1,6 @@
 # ParceApp
 
-Aplicación React Native para crear un perfil y reservar cenas y eventos. El backlog del MVP está en [docs/MVP_BACKLOG.md](docs/MVP_BACKLOG.md).
+Aplicación React Native para crear un perfil y reservar cenas y eventos. La documentación de trabajo y los informes se mantienen únicamente en la carpeta local `docs/`, excluida del repositorio.
 
 ## Entorno
 
@@ -40,10 +40,10 @@ Evidencia en `docs/orchestration/build-android-final.log` y `docs/orchestration/
 
 ## Seguridad, firma y pruebas locales
 
-Android release exige una firma propia mediante variables de entorno; ver [docs/SIGNING.md](docs/SIGNING.md). No utiliza la clave debug para distribuir. La evaluación de dependencias y avisos restantes está en [docs/DEPENDENCY_REMEDIATION.md](docs/DEPENDENCY_REMEDIATION.md); no se afirma cero vulnerabilidades.
+Android release exige una firma propia mediante las variables `PARCEAPP_RELEASE_STORE_FILE`, `PARCEAPP_RELEASE_STORE_PASSWORD`, `PARCEAPP_RELEASE_KEY_ALIAS` y `PARCEAPP_RELEASE_KEY_PASSWORD`. No utiliza la clave debug para distribuir. Persisten avisos de dependencias; no se afirma cero vulnerabilidades.
 
 Para probar reglas sin Firebase real: Node 20, JDK17 y `npm run test:rules` (proyecto ficticio `demo-parceapp`). No ejecutar deploy para estas pruebas. El emulador de Firestore escucha en 8080; Auth local para futuras pruebas nativas en 9099. Los binarios descargados del emulador y logs deben ubicarse en `.cache` o `docs/orchestration/phase2`, dentro del proyecto.
 
 Modo de app local: copiar `.env.emulator.example` a un archivo de entorno de desarrollo privado, seleccionar ese archivo con `ENVFILE` al recompilar y reiniciar la app. Usar únicamente build Debug; la configuración rechaza una combinación demo/flag incorrecta o cambio de proyecto sin reinicio. Android Emulator conecta a `10.0.2.2`; iOS Simulator a `127.0.0.1`. No requiere claves reales. La app no redirige Firebase de producción silenciosamente. La aceptación en dispositivos está aplazada por petición del usuario.
 
-La vitrina de museos, cafés, teatros y otros aliados se opera desde la sección administrativa de publicaciones. Modelo, vigencia, ciudades y pruebas locales en [docs/PARTNER_PLANS.md](docs/PARTNER_PLANS.md). Crear eventos y administrar publicaciones requiere el claim firmado admin; las reglas locales deben validarse y desplegarse por un operador antes del piloto.
+La vitrina de museos, cafés, teatros y otros aliados se opera desde la sección administrativa de publicaciones. Crear eventos y administrar publicaciones requiere el claim firmado admin; las reglas locales deben validarse y desplegarse por un operador antes del piloto.
