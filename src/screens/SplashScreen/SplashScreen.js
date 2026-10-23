@@ -1,89 +1,98 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-import React, {useEffect, useRef, useState} from 'react';
-import {Image, Text, Animated, View, Button, SafeAreaView} from 'react-native';
-import styles from './styles';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {useDispatch} from 'react-redux';
+import React, {useEffect, useState} from 'react';
 import {
-  setId,
-  setName,
-  setEmail,
-  setBirthDate,
-  setPhone,
-} from '../../slices/userSlice';
+  Image,
+  Text,
+  Button,
+  SafeAreaView,
+  ActivityIndicator,
+} from 'react-native';
+import {useDispatch} from 'react-redux';
+import {auth} from '../../firebase/config';
+import {
+  clearLegacySession,
+  loadSessionProfile,
+  resetToSession,
+  logout,
+  sessionError,
+} from '../../services/session';
+import {setUser, clearUser} from '../../slices/userSlice';
+import styles from './styles';
+import {clearEventos} from '../../slices/eventosSlice';
 
 export default function SplashScreen({navigation}) {
   const dispatch = useDispatch();
-
-  const wait = timeout => {
-    return new Promise(resolve => setTimeout(resolve, timeout));
-  };
+  const [attempt, setAttempt] = useState(0);
+  const [error, setError] = useState(null);
+  const [leaving, setLeaving] = useState(false);
   useEffect(() => {
-    wait(1000).then(async () => [
-      fadeIn(),
-      wait(5000).then(() => [
-        fadeOut(),
-        wait(1000).then(() => continueScreen()),
-      ]),
-    ]);
-  }, []);
-
-  const continueScreen = async () => {
-    const userStatus = await AsyncStorage.getItem('userStatus');
-    const id = await AsyncStorage.getItem('id');
-    const fullName = await AsyncStorage.getItem('fullName');
-    const email = await AsyncStorage.getItem('email');
-    const birthDate = await AsyncStorage.getItem('birthDate');
-    const phone = await AsyncStorage.getItem('phone');
-    console.log(birthDate, 'birthDate');
-
-    dispatch(setId(id));
-    dispatch(setName(fullName));
-    dispatch(setEmail(email));
-    dispatch(setBirthDate(birthDate));
-    dispatch(setPhone(phone));
-    console.log(userStatus, 'userStatus');
-    if (userStatus == null || userStatus == 'Logout') {
-      navigation.replace('LoginScreen');
-    } else {
-      navigation.replace('HomeScreen');
+    let active = true;
+    setError(null);
+    async function restore() {
+      try {
+        await auth.authStateReady();
+        await clearLegacySession();
+        const user = auth.currentUser;
+        const profile = user ? await loadSessionProfile(user) : null;
+        if (!active) {
+          return;
+        }
+        if (profile) {
+          dispatch(setUser(profile));
+          resetToSession(navigation, profile);
+        } else {
+          dispatch(clearUser());
+          dispatch(clearEventos());
+          navigation.reset({index: 0, routes: [{name: 'LoginScreen'}]});
+        }
+      } catch (failure) {
+        if (active) {
+          setError(sessionError(failure));
+        }
+      }
+    }
+    restore();
+    return () => {
+      active = false;
+    };
+  }, [attempt, dispatch, navigation]);
+  const leave = async () => {
+    setLeaving(true);
+    try {
+      await logout();
+      dispatch(clearUser());
+      dispatch(clearEventos());
+      navigation.reset({index: 0, routes: [{name: 'LoginScreen'}]});
+    } catch (failure) {
+      if (!auth.currentUser) {
+        dispatch(clearUser());
+        dispatch(clearEventos());
+        navigation.reset({index: 0, routes: [{name: 'LoginScreen'}]});
+      }
+      setError(sessionError(failure));
+    } finally {
+      setLeaving(false);
     }
   };
-
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  const fadeIn = () => {
-    // Will change fadeAnim value to 1 in 5 seconds
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 1000,
-      useNativeDriver: true,
-    }).start();
-
-    Animated.timing();
-  };
-
-  const fadeOut = () => {
-    // Will change fadeAnim value to 0 in 3 seconds
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 1000,
-      useNativeDriver: true,
-    }).start();
-  };
-
   return (
     <SafeAreaView style={styles.container}>
-      <Animated.Image
-        source={require('../../../assets/logo.png')}
-        style={[
-          styles.logo,
-          {
-            // Bind opacity to animated value
-            opacity: fadeAnim,
-          },
-        ]}
-      />
+      <Image source={require('../../../assets/logo.png')} style={styles.logo} />
+      {error ? (
+        <>
+          <Text>{error}</Text>
+          <Button
+            title="Reintentar"
+            disabled={leaving}
+            onPress={() => setAttempt(attempt + 1)}
+          />
+          <Button
+            title="Ir a iniciar sesión"
+            disabled={leaving}
+            onPress={leave}
+          />
+        </>
+      ) : (
+        <ActivityIndicator />
+      )}
     </SafeAreaView>
   );
 }

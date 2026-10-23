@@ -25,6 +25,8 @@ const eventosSlice = createSlice({
     clearEventos(state) {
       state.list = [];
       state.lastFetch = null;
+      state.loading = false;
+      state.error = null;
     },
   },
 });
