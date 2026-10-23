@@ -1,7 +1,22 @@
 import {StyleSheet} from 'react-native';
-import {Button} from 'react-native-paper';
 
 export default StyleSheet.create({
+  scrollContent: {paddingBottom: 120},
+  plansSection: {padding: 30},
+  plansTitle: {
+    fontSize: 25,
+    fontWeight: '700',
+    color: '#222',
+    marginBottom: 10,
+  },
+  plansText: {color: '#333', fontSize: 16, marginBottom: 16},
+  plansButton: {
+    backgroundColor: '#80743b',
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 12,
+  },
+  plansButtonText: {color: '#fff', fontSize: 16},
   container: {
     height: '100%',
     backgroundColor: '#fff',
@@ -14,17 +29,17 @@ export default StyleSheet.create({
   },
 
   titleText: {
-    marginTop: 100,
-    fontSize: 50,
+    marginTop: 24,
+    fontSize: 30,
     paddingHorizontal: 30,
-    fontWeight: 600,
+    fontWeight: '600',
   },
 
   subtitleText: {
-    fontSize: 40,
+    fontSize: 24,
     paddingHorizontal: 30,
-    fontWeight: 600,
-    paddingBottom: 50,
+    fontWeight: '600',
+    paddingBottom: 20,
   },
   gridOptions: {
     width: '100%',

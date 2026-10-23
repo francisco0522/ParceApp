@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useRef, useState} from 'react';
 import {
   Image,
   Text,
@@ -7,30 +7,14 @@ import {
   View,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
 import styles from './styles';
-import {getAuth, signInWithEmailAndPassword} from 'firebase/auth';
-import {firebaseApp} from '../../firebase/config';
-import {
-  getFirestore,
-  collection,
-  query,
-  where,
-  getDocs,
-  getDoc,
-  doc,
-} from 'firebase/firestore';
-import {
-  setId,
-  setName,
-  setEmail,
-  setBirthDate,
-  setPhone,
-} from '../../slices/userSlice';
-import {useSelector, useDispatch} from 'react-redux';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {login, resetToSession, sessionError} from '../../services/session';
+import {setUser} from '../../slices/userSlice';
+import {useDispatch} from 'react-redux';
 
 export default function LoginScreen({navigation}) {
   const [emailText, setEmailText] = useState('');
@@ -41,48 +25,28 @@ export default function LoginScreen({navigation}) {
     navigation.navigate('RegistrationScreen');
   };
 
-  useEffect(() => {}, []);
-
+  const [submitting, setSubmitting] = useState(false);
+  const pending = useRef(false);
   const onLoginPress = async () => {
-    const auth = getAuth(firebaseApp);
-
-    signInWithEmailAndPassword(auth, emailText, password)
-      .then(async response => {
-        const uid = response.user.uid;
-        const db = getFirestore(firebaseApp);
-        const q = query(collection(db, 'users'), where('id', '==', uid));
-
-        const querySnapshot = await getDocs(q);
-
-        querySnapshot.forEach(async document => {
-          const docID = document.id;
-          const docRef = doc(db, 'users', docID);
-          const docSnap = await getDoc(docRef);
-
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            dispatch(setName(data.fullName));
-            dispatch(setEmail(data.emailText));
-            dispatch(setBirthDate(data.birthDate));
-            dispatch(setPhone(data.phone));
-            dispatch(setId(data.id));
-            await AsyncStorage.setItem('fullName', data.fullName);
-            await AsyncStorage.setItem('email', data.emailText);
-            await AsyncStorage.setItem('id', data.id);
-            await AsyncStorage.setItem('phone', data.phone);
-            await AsyncStorage.setItem('birthDate', data.birthDate);
-            await AsyncStorage.setItem('userStatus', 'Login');
-            console.log('aqui');
-            navigation.replace('HomeScreen');
-          } else {
-            // docSnap.data() will be undefined in this case
-          }
-        });
-      })
-      .catch(error => {
-        alert('No se encontro el usuario con correo ' + emailText);
-        // ..
-      });
+    if (pending.current) {
+      return;
+    }
+    if (!emailText.trim() || !password) {
+      Alert.alert('Error', 'Ingresa tu correo y contraseña');
+      return;
+    }
+    pending.current = true;
+    setSubmitting(true);
+    try {
+      const profile = await login(emailText, password);
+      dispatch(setUser(profile));
+      resetToSession(navigation, profile);
+    } catch (error) {
+      Alert.alert('Error', sessionError(error));
+    } finally {
+      pending.current = false;
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -102,6 +66,7 @@ export default function LoginScreen({navigation}) {
           value={emailText}
           underlineColorAndroid="transparent"
           autoCapitalize="none"
+          keyboardType="email-address"
         />
         <TextInput
           style={styles.input}
@@ -113,8 +78,13 @@ export default function LoginScreen({navigation}) {
           underlineColorAndroid="transparent"
           autoCapitalize="none"
         />
-        <TouchableOpacity style={styles.button} onPress={() => onLoginPress()}>
-          <Text style={styles.buttonTitle}>Iniciar Sesión</Text>
+        <TouchableOpacity
+          style={styles.button}
+          disabled={submitting}
+          onPress={onLoginPress}>
+          <Text style={styles.buttonTitle}>
+            {submitting ? 'Ingresando…' : 'Iniciar Sesión'}
+          </Text>
         </TouchableOpacity>
         <View style={styles.footerView}>
           <Text style={styles.footerText}>
