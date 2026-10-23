@@ -1,23 +1,37 @@
-import React from 'react';
-import {SafeAreaView, Text, TouchableOpacity, Image} from 'react-native';
+import React, {useRef, useState} from 'react';
+import {SafeAreaView, Text, TouchableOpacity, Image, Alert} from 'react-native';
 import styles from './styles';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {clearEventos} from '../../slices/eventosSlice';
+import {logout, sessionError} from '../../services/session';
+import {auth} from '../../firebase/config';
+import {clearUser} from '../../slices/userSlice';
+import {useDispatch} from 'react-redux';
 
 const Footer = ({navigation}) => {
+  const dispatch = useDispatch();
+  const pending = useRef(false);
+  const [submitting, setSubmitting] = useState(false);
   async function close() {
+    if (pending.current) {
+      return;
+    }
+    pending.current = true;
+    setSubmitting(true);
     try {
-      // Clear sensitive data from AsyncStorage
-      const keysToRemove = ['userStatus', 'id', 'fullName', 'email'];
-      await Promise.all(keysToRemove.map(key => AsyncStorage.removeItem(key)));
-
-      navigation.navigate('LoginScreen');
+      await logout();
+      dispatch(clearUser());
+      dispatch(clearEventos());
+      navigation.reset({index: 0, routes: [{name: 'LoginScreen'}]});
     } catch (error) {
-      console.error('Error during logout:', error);
-
-      Alert.alert(
-        'Error',
-        'An error occurred during logout. Please try again.',
-      );
+      if (!auth.currentUser) {
+        dispatch(clearUser());
+        dispatch(clearEventos());
+        navigation.reset({index: 0, routes: [{name: 'LoginScreen'}]});
+      }
+      Alert.alert('Error', sessionError(error));
+    } finally {
+      pending.current = false;
+      setSubmitting(false);
     }
   }
   return (
@@ -30,49 +44,39 @@ const Footer = ({navigation}) => {
             height: 20,
             width: 20,
           }}
-          source={require('/Users/wolfcore/Documents/ParceApp/assets/casa-invert.png')}
+          source={require('../../../assets/casa-invert.png')}
         />
         <Text style={styles.textButton}>Home</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.navigate('ProfileScreen')}>
-        <Image
-          style={{
-            height: 20,
-            width: 20,
-          }}
-          source={require('/Users/wolfcore/Documents/ParceApp/assets/mensajero-invert.png')}
-        />
-        <Text style={styles.textButton}>Chat</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate('ProfileScreen')}>
+        onPress={() => navigation.navigate('MyAgendaScreen')}>
         <Image
           style={{
             height: 30,
             width: 30,
           }}
-          source={require('/Users/wolfcore/Documents/ParceApp/assets/calendario-invert.png')}
+          source={require('../../../assets/calendario-invert.png')}
         />
         <Text style={styles.textButton}>Mis Reservas</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.button}
-        onPress={() =>
-          //navigation.navigate('ProfileScreen')
-          close()
-        }>
+        onPress={() => navigation.navigate('ProfileScreen')}>
         <Image
           style={{
             height: 30,
             width: 30,
           }}
-          source={require('/Users/wolfcore/Documents/ParceApp/assets/perfil-invert.png')}
+          source={require('../../../assets/perfil-invert.png')}
         />
         <Text style={styles.textButton}>Mi perfil</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.button}
+        disabled={submitting}
+        onPress={close}>
+        <Text style={styles.textButton}>Salir</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
