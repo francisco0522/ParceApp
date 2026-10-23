@@ -1,0 +1,42 @@
+import {StyleSheet} from 'react-native';
+export default StyleSheet.create({
+  container: {flex: 1, backgroundColor: '#202020'},
+  content: {padding: 20, paddingBottom: 120},
+  title: {fontSize: 28, fontWeight: '700', color: '#fff', marginBottom: 12},
+  text: {color: '#fff', fontSize: 16, marginBottom: 8},
+  muted: {color: '#ccc', marginBottom: 8},
+  card: {
+    backgroundColor: '#333',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 16,
+  },
+  cardTitle: {color: '#fff', fontSize: 20, fontWeight: '600', marginBottom: 8},
+  image: {width: '100%', height: 160, borderRadius: 10, marginBottom: 12},
+  placeholder: {
+    height: 90,
+    backgroundColor: '#444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    borderRadius: 10,
+  },
+  badge: {color: '#f6df8a', fontWeight: '700', marginBottom: 8},
+  button: {
+    padding: 14,
+    borderRadius: 10,
+    backgroundColor: '#80743b',
+    marginBottom: 12,
+  },
+  row: {flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14},
+  chip: {padding: 12, backgroundColor: '#333', borderRadius: 10},
+  selected: {backgroundColor: '#80743b'},
+  input: {
+    color: '#fff',
+    backgroundColor: '#333',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  label: {color: '#fff', marginBottom: 6},
+});
