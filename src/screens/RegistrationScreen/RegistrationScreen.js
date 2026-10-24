@@ -253,11 +253,11 @@ export default function RegistrationScreen({navigation}) {
               fontSize: 12,
               color: '#E5E5EA',
             }}>
-            Escanea tu cédula para autocompletar tu información y acceder a
-            beneficios dentro de la App. Podrás usar el nombre que prefieras en
-            tu perfil, aunque te recomendamos utilizar tu nombre real para
-            generar más confianza y evitar inconvenientes. Tus datos reales
-            nunca serán visibles para otros usuarios.
+            Escanea tu DNI o Pasaporte para autocompletar tu información y
+            acceder a beneficios dentro de la App. Podrás usar el nombre que
+            prefieras en tu perfil, aunque te recomendamos utilizar tu nombre
+            real para generar más confianza y evitar inconvenientes. Tus datos
+            reales nunca serán visibles para otros usuarios.
           </Text>
 
           <TouchableOpacity

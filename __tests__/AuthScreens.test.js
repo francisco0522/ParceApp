@@ -1,6 +1,6 @@
 import React from 'react';
 import renderer, {act} from 'react-test-renderer';
-import {TextInput, TouchableOpacity, Alert, Button} from 'react-native';
+import {TextInput, TouchableOpacity, Alert, Button, Text} from 'react-native';
 const mockDispatch = jest.fn();
 jest.mock('react-redux', () => ({useDispatch: () => mockDispatch}));
 jest.mock('react-native-safe-area-context', () => ({
@@ -218,6 +218,25 @@ describe('account screen flows', () => {
     await act(async () => button('Crear cuenta').props.onPress());
     expect(register).toHaveBeenCalledTimes(2);
     expect(navigation.reset).toHaveBeenCalled();
+  });
+  test('document scan fills registration without logging document data', async () => {
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      await render(RegistrationScreen);
+      const scanButton = tree.root.findAllByType(TouchableOpacity).find(node =>
+        node.findAllByType(Text).some(text => /documento|identidad/i.test(text.props.children)),
+      );
+      act(() => scanButton.props.onPress());
+      act(() => tree.root.findByType('MockScanner').props.onScan({
+        fullName: 'PERSONA FICTICIA', year: '2000', month: '02', day: '29', gender: '', idNumber: '12345678',
+      }));
+      expect(tree.root.findAllByType(TextInput).some(node => node.props.value === 'PERSONA FICTICIA')).toBe(true);
+      expect(tree.root.findByType('MockDatePicker').props.date).toEqual(new Date(2000, 1, 29));
+      expect(log).not.toHaveBeenCalled();
+      expect(register).not.toHaveBeenCalled();
+    } finally {
+      log.mockRestore();
+    }
   });
   test('splash reopens completed persisted profile', async () => {
     loadSessionProfile.mockResolvedValue({...profile, profileCompleted: true});
