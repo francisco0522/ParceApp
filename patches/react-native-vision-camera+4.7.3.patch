@@ -1,0 +1,80 @@
+diff --git a/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/core/CameraSession+Configuration.kt b/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/core/CameraSession+Configuration.kt
+index 1e9c0de..c6788a7 100644
+--- a/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/core/CameraSession+Configuration.kt
++++ b/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/core/CameraSession+Configuration.kt
+@@ -2,6 +2,7 @@ package com.mrousavy.camera.core
+ 
+ import android.annotation.SuppressLint
+ import android.util.Log
++import android.util.Size
+ import androidx.annotation.OptIn
+ import androidx.camera.core.CameraSelector
+ import androidx.camera.core.CameraState
+@@ -13,6 +14,8 @@ import androidx.camera.core.MirrorMode
+ import androidx.camera.core.Preview
+ import androidx.camera.core.TorchState
+ import androidx.camera.core.resolutionselector.ResolutionSelector
++import androidx.camera.core.resolutionselector.AspectRatioStrategy
++import androidx.camera.core.resolutionselector.ResolutionStrategy
+ import androidx.camera.extensions.ExtensionMode
+ import androidx.camera.lifecycle.ProcessCameraProvider
+ import androidx.camera.video.Recorder
+@@ -220,7 +223,17 @@ internal fun CameraSession.configureOutputs(configuration: CameraConfiguration)
+   val codeScannerConfig = configuration.codeScanner as? CameraConfiguration.Output.Enabled<CameraConfiguration.CodeScanner>
+   if (codeScannerConfig != null) {
+     Log.i(CameraSession.TAG, "Creating CodeScanner output...")
+-    val analyzer = ImageAnalysis.Builder().build()
++    // Dense PDF417 codes need more detail than ImageAnalysis's default size.
++    // CameraX may fall back to a supported size for this device/use-case group.
++    val codeScannerResolutionSelector = ResolutionSelector.Builder()
++      .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
++      .setResolutionStrategy(ResolutionStrategy(Size(1920, 1080), ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER))
++      .setAllowedResolutionMode(ResolutionSelector.PREFER_HIGHER_RESOLUTION_OVER_CAPTURE_RATE)
++      .build()
++    val analyzer = ImageAnalysis.Builder()
++      .setResolutionSelector(codeScannerResolutionSelector)
++      .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
++      .build()
+     val pipeline = CodeScannerPipeline(codeScannerConfig.config, callback)
+     analyzer.setAnalyzer(CameraQueues.analyzerExecutor, pipeline)
+     codeScannerOutput = analyzer
+diff --git a/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/core/utils/BarcodeValue.kt b/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/core/utils/BarcodeValue.kt
+new file mode 100644
+index 0000000..8b197a8
+--- /dev/null
++++ b/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/core/utils/BarcodeValue.kt
+@@ -0,0 +1,13 @@
++package com.mrousavy.camera.core.utils
++
++// ML Kit exposes rawValue only for UTF-8. Legacy PDF417 documents may contain
++// Latin-1 text and binary bytes; preserve each byte without logging the payload.
++internal fun decodeBarcodeValue(rawValue: String?, rawBytes: ByteArray?, isPdf417: Boolean): String? {
++  if (!rawValue.isNullOrEmpty()) {
++    return rawValue
++  }
++  if (!isPdf417 || rawBytes == null || rawBytes.isEmpty()) {
++    return null
++  }
++  return rawBytes.toString(Charsets.ISO_8859_1)
++}
+diff --git a/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraView+Events.kt b/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraView+Events.kt
+index aacb5c7..e4e0398 100644
+--- a/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraView+Events.kt
++++ b/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraView+Events.kt
+@@ -13,6 +13,7 @@ import com.mrousavy.camera.core.UnknownCameraError
+ import com.mrousavy.camera.core.types.CodeType
+ import com.mrousavy.camera.core.types.Orientation
+ import com.mrousavy.camera.core.types.ShutterType
++import com.mrousavy.camera.core.utils.decodeBarcodeValue
+ 
+ fun CameraView.invokeOnInitialized() {
+   Log.i(CameraView.TAG, "invokeOnInitialized()")
+@@ -131,7 +132,7 @@ fun CameraView.invokeOnCodeScanned(barcodes: List<Barcode>, scannerFrame: CodeSc
+     val code = Arguments.createMap()
+     val type = CodeType.fromBarcodeType(barcode.format)
+     code.putString("type", type.unionValue)
+-    code.putString("value", barcode.rawValue)
++    code.putString("value", decodeBarcodeValue(barcode.rawValue, barcode.rawBytes, barcode.format == Barcode.FORMAT_PDF417))
+ 
+     barcode.boundingBox?.let { rect ->
+       val frame = Arguments.createMap()

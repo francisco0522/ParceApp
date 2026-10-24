@@ -8,6 +8,7 @@
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest",
+    "postinstall": "patch-package --error-on-fail",
     "test:rules": "firebase emulators:exec --only firestore --project demo-parceapp \"node --test tests/emulator/*.test.cjs\""
   },
   "dependencies": {
@@ -34,7 +35,7 @@
     "react-native-screens": "^4.5.0",
     "react-native-url-polyfill": "3.0.0",
     "react-native-vector-icons": "^10.2.0",
-    "react-native-vision-camera": "^4.7.3",
+    "react-native-vision-camera": "4.7.3",
     "react-native-worklets-core": "^1.5.0",
     "react-redux": "^9.2.0",
     "redux": "^5.0.1"
@@ -63,6 +64,7 @@
     "eslint-plugin-react-native": "^4.0.0",
     "firebase-tools": "14.27.0",
     "jest": "^29.2.1",
+    "patch-package": "8.0.1",
     "prettier": "3.4.2",
     "react-test-renderer": "18.3.1",
     "typescript": "5.7.3"
